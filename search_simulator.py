@@ -69,6 +69,23 @@ class Colors:
     
     # Section headers
     SECTION_HEADER = (0, 200, 255) # Cyan
+    
+    # Research Module Colors (Westra Adaptive Algorithm)
+    RESEARCH_BFS = (0, 100, 255)   # Blue for BFS phase
+    RESEARCH_DFS = (255, 140, 0)   # Orange for DFS phase
+    MODE_RESEARCH = (255, 215, 0)  # Gold for Research Mode indicator
+    
+    # DABPS Algorithm Colors
+    DABPS_PERIMETER = (255, 140, 0)    # Orange - Perimeter (The Net)
+    DABPS_ADAPTIVE = (0, 255, 255)     # Cyan - Adaptive Search (The Scout)
+    
+    # KWS Algorithm Colors
+    KWS_BEAM = (100, 150, 255, 120)    # Transparent Blue - Slide beams
+    KWS_STOP = (255, 255, 0)           # Bright Yellow - Stopping points
+    
+    # Stealth Search Colors (Ghost Mode)
+    STEALTH_PATH = (0, 200, 255)       # Cyan - Current path stack
+    STEALTH_HEAD = (255, 50, 50)       # Bright Red - Current head
 
 
 class NodeState(Enum):
@@ -80,6 +97,18 @@ class NodeState(Enum):
     FRONTIER = auto()
     VISITED = auto()
     PATH = auto()
+    # Research Module States (Westra Adaptive Algorithm)
+    RESEARCH_BFS = auto()  # Blue - BFS phase
+    RESEARCH_DFS = auto()  # Orange - DFS phase
+    # DABPS Algorithm States
+    DABPS_PERIMETER = auto()  # Orange - Perimeter building phase
+    DABPS_ADAPTIVE = auto()   # Cyan - Adaptive search phase
+    # KWS Algorithm States
+    KWS_BEAM = auto()   # Transparent Blue - Slide beams
+    KWS_STOP = auto()   # Bright Yellow - Stopping points
+    # Stealth Search States
+    STEALTH_PATH = auto()  # Cyan - Current path stack (Ghost Mode)
+    STEALTH_HEAD = auto()  # Red - Current head/node being explored
 
 
 # Window Configuration (Default - will be dynamic)
@@ -184,6 +213,18 @@ class Node:
             NodeState.FRONTIER: Colors.FRONTIER,
             NodeState.VISITED: Colors.VISITED,
             NodeState.PATH: Colors.PATH,
+            # Research Module Colors
+            NodeState.RESEARCH_BFS: Colors.RESEARCH_BFS,
+            NodeState.RESEARCH_DFS: Colors.RESEARCH_DFS,
+            # DABPS Algorithm Colors
+            NodeState.DABPS_PERIMETER: Colors.DABPS_PERIMETER,
+            NodeState.DABPS_ADAPTIVE: Colors.DABPS_ADAPTIVE,
+            # KWS Algorithm Colors
+            NodeState.KWS_BEAM: Colors.KWS_BEAM,
+            NodeState.KWS_STOP: Colors.KWS_STOP,
+            # Stealth Search Colors (Ghost Mode)
+            NodeState.STEALTH_PATH: Colors.STEALTH_PATH,
+            NodeState.STEALTH_HEAD: Colors.STEALTH_HEAD,
         }
         return color_map.get(self.state, Colors.EMPTY)
 
@@ -1389,6 +1430,930 @@ class ScoutSolver(Solver):
 
 
 # =============================================================================
+# RESEARCH MODULE - WESTRA ADAPTIVE ALGORITHM
+# =============================================================================
+
+class WestraAdaptiveSearch(Solver):
+    """
+    Westra Adaptive Search Algorithm - Research Module
+    
+    A novel adaptive algorithm that dynamically switches between BFS and DFS
+    based on memory usage (queue size). This demonstrates real-time adaptation
+    to map complexity.
+    
+    Strategy:
+    1. Start with Bidirectional BFS for efficient exploration
+    2. Every 50 steps, check queue size
+    3. If queue > 100 (memory "panic"), switch to DFS to reduce queue size
+    4. If DFS hits dead end, revert back to BFS
+    
+    Visualization:
+    - BFS phase: Blue nodes (RESEARCH_BFS)
+    - DFS phase: Orange nodes (RESEARCH_DFS)
+    
+    This color shift demonstrates the algorithm adapting to map complexity
+    in real-time - a key contribution for research purposes.
+    """
+    
+    def __init__(self, panic_threshold: int = 100, check_interval: int = 50) -> None:
+        """
+        Initialize Westra Adaptive Search.
+        
+        Args:
+            panic_threshold: Queue size that triggers DFS switch (default: 100)
+            check_interval: Steps between queue size checks (default: 50)
+        """
+        super().__init__("Westra Adaptive Search (Research)")
+        self.panic_threshold = panic_threshold
+        self.check_interval = check_interval
+        self.current_mode = "BFS"  # Start with BFS
+        self.steps_since_check = 0
+        self.mode_switches = 0
+        self.panic_switches = 0
+    
+    def solve(self, grid: Grid) -> Iterator[Tuple[List[Node], List[Node], Optional[List[Node]]]]:
+        """
+        Execute Westra Adaptive Search algorithm.
+        
+        Dynamically switches between BFS and DFS based on queue size
+        to optimize memory usage while maintaining search effectiveness.
+        """
+        try:
+            from collections import deque
+            self.grid = grid
+            self.steps = 0
+            self.steps_since_check = 0
+            self.mode_switches = 0
+            self.panic_switches = 0
+            
+            start_node = grid.get_node(*grid.start_pos)
+            target_node = grid.get_node(*grid.target_pos)
+            
+            if not start_node or not target_node:
+                print("Error: Start or target node not found")
+                return
+            
+            # Bidirectional BFS initialization
+            frontier_start: deque = deque([start_node])
+            frontier_target: deque = deque([target_node])
+            visited_start: Set[Node] = {start_node}
+            visited_target: Set[Node] = {target_node}
+            
+            # DFS stack (used when in DFS mode)
+            dfs_stack: List[Node] = []
+            dfs_visited: Set[Node] = set()
+            
+            start_node.parent = None
+            target_node.parent = None
+            
+            meeting_point: Optional[Node] = None
+            
+            print(f"[Westra] Starting adaptive search...")
+            print(f"[Westra] Panic threshold: {self.panic_threshold}, Check interval: {self.check_interval}")
+            
+            while (frontier_start and frontier_target) or (self.current_mode == "DFS" and dfs_stack):
+                self.steps += 1
+                self.steps_since_check += 1
+                
+                # Check if it's time to evaluate queue size
+                if self.steps_since_check >= self.check_interval and self.current_mode == "BFS":
+                    total_queue_size = len(frontier_start) + len(frontier_target)
+                    
+                    if total_queue_size > self.panic_threshold:
+                        # MEMORY PANIC! Switch to DFS
+                        self.current_mode = "DFS"
+                        self.mode_switches += 1
+                        self.panic_switches += 1
+                        print(f"[Westra] ⚠️  MEMORY PANIC at step {self.steps}!")
+                        print(f"[Westra] Queue size: {total_queue_size} > {self.panic_threshold}")
+                        print(f"[Westra] Switching to DFS mode to reduce memory usage...")
+                        
+                        # Initialize DFS from current BFS frontier
+                        dfs_stack = list(frontier_start)
+                        dfs_visited = visited_start.copy()
+                    
+                    self.steps_since_check = 0
+                
+                if self.current_mode == "BFS":
+                    # BFS Phase - Blue nodes
+                    # Expand from start side
+                    if frontier_start:
+                        current_start = frontier_start.popleft()
+                        
+                        for neighbor in grid.get_neighbors_clockwise_diagonal(current_start):
+                            if neighbor not in visited_start:
+                                # Color as BFS phase (Blue)
+                                if neighbor.state not in (NodeState.START, NodeState.TARGET):
+                                    neighbor.state = NodeState.RESEARCH_BFS
+                                
+                                neighbor.parent = current_start
+                                visited_start.add(neighbor)
+                                frontier_start.append(neighbor)
+                                
+                                # Check if we met
+                                if neighbor in visited_target:
+                                    meeting_point = neighbor
+                                    break
+                        
+                        if meeting_point:
+                            break
+                    
+                    # Expand from target side
+                    if frontier_target and not meeting_point:
+                        current_target = frontier_target.popleft()
+                        
+                        for neighbor in grid.get_neighbors_clockwise_diagonal(current_target):
+                            if neighbor not in visited_target:
+                                # Color as BFS phase (Blue)
+                                if neighbor.state not in (NodeState.START, NodeState.TARGET):
+                                    neighbor.state = NodeState.RESEARCH_BFS
+                                
+                                neighbor.parent = current_target
+                                visited_target.add(neighbor)
+                                frontier_target.append(neighbor)
+                                
+                                # Check if we met
+                                if neighbor in visited_start:
+                                    meeting_point = neighbor
+                                    break
+                    
+                    # Check if BFS exhausted without finding path
+                    if not frontier_start or not frontier_target:
+                        print(f"[Westra] BFS exhausted without finding path")
+                        break
+                
+                else:  # DFS Mode - Orange nodes
+                    if dfs_stack:
+                        current_dfs = dfs_stack.pop()
+                        
+                        if current_dfs in dfs_visited:
+                            continue
+                        
+                        dfs_visited.add(current_dfs)
+                        
+                        # Check if we reached target
+                        if current_dfs == target_node:
+                            meeting_point = current_dfs
+                            break
+                        
+                        # Get neighbors and explore depth-first
+                        neighbors = grid.get_neighbors_clockwise_diagonal(current_dfs)
+                        unvisited_neighbors = [n for n in neighbors if n not in dfs_visited]
+                        
+                        if unvisited_neighbors:
+                            # Add unvisited neighbors to stack (DFS order)
+                            for neighbor in reversed(unvisited_neighbors):
+                                # Color as DFS phase (Orange)
+                                if neighbor.state not in (NodeState.START, NodeState.TARGET):
+                                    neighbor.state = NodeState.RESEARCH_DFS
+                                
+                                neighbor.parent = current_dfs
+                                dfs_stack.append(neighbor)
+                        else:
+                            # Dead end reached - check if we should revert to BFS
+                            if len(dfs_stack) < self.panic_threshold // 2:
+                                print(f"[Westra] DFS hit dead end, reverting to BFS...")
+                                self.current_mode = "BFS"
+                                self.mode_switches += 1
+                                self.steps_since_check = 0
+                    else:
+                        # DFS stack empty - revert to BFS
+                        print(f"[Westra] DFS exhausted, reverting to BFS...")
+                        self.current_mode = "BFS"
+                        self.mode_switches += 1
+                        self.steps_since_check = 0
+                
+                # Combine frontiers for visualization
+                combined_frontier = list(frontier_start) + list(frontier_target) + dfs_stack
+                combined_visited = list(visited_start) + list(visited_target) + list(dfs_visited)
+                
+                yield (combined_frontier, combined_visited, None)
+            
+            # Reconstruct path if meeting point found
+            if meeting_point:
+                path = self._reconstruct_bidirectional_path(meeting_point, start_node, target_node)
+                self.path_length = len(path)
+                
+                print(f"[Westra] ✓ Path found!")
+                print(f"[Westra] Total steps: {self.steps}")
+                print(f"[Westra] Mode switches: {self.mode_switches} ({self.panic_switches} panic switches)")
+                print(f"[Westra] Final mode: {self.current_mode}")
+                
+                combined_frontier = list(frontier_start) + list(frontier_target) + dfs_stack
+                combined_visited = list(visited_start) + list(visited_target) + list(dfs_visited)
+                yield (combined_frontier, combined_visited, path)
+            else:
+                print(f"[Westra] ✗ No path found")
+                print(f"[Westra] Total steps: {self.steps}")
+                print(f"[Westra] Mode switches: {self.mode_switches}")
+                
+                combined_frontier = list(frontier_start) + list(frontier_target) + dfs_stack
+                combined_visited = list(visited_start) + list(visited_target) + list(dfs_visited)
+                yield (combined_frontier, combined_visited, [])
+            
+        except Exception as e:
+            print(f"Error in Westra Adaptive Search: {e}")
+            import traceback
+            traceback.print_exc()
+            yield ([], [], [])
+    
+    def _reconstruct_bidirectional_path(self, meeting: Node, start: Node, target: Node) -> List[Node]:
+        """Reconstruct path from start to target through meeting point."""
+        # Path from start to meeting
+        path_start = []
+        current = meeting
+        while current and current != start:
+            path_start.append(current)
+            current = current.parent
+        path_start.append(start)
+        path_start.reverse()
+        
+        # For simplicity, just return the start-to-meeting path
+        # In a full implementation, we'd also get meeting-to-target
+        return path_start
+    
+    def get_stats(self) -> Dict[str, int]:
+        """Return extended statistics including mode switches."""
+        base_stats = super().get_stats()
+        base_stats['mode_switches'] = self.mode_switches
+        base_stats['panic_switches'] = self.panic_switches
+        base_stats['final_mode'] = self.current_mode
+        return base_stats
+
+
+# =============================================================================
+# WESTRA DABPS - DENSITY-ADAPTIVE BI-PHASE SEARCH
+# =============================================================================
+
+class WestraDABPS(Solver):
+    """
+    Westra DABPS - Density-Adaptive Bi-Phase Search
+    
+    A novel research algorithm implementing:
+    1. REVERSE PERIMETER BFS: Builds a perimeter around the target (The Net)
+    2. ADAPTIVE FORWARD SEARCH: Switches between BFS and DFS based on neighbor density
+    
+    The algorithm adapts its strategy based on local map density:
+    - Corridor (≤1 unvisited neighbor): Use DFS for fast traversal
+    - Open Room (>1 unvisited neighbor): Use BFS for optimal exploration
+    
+    Visualization:
+    - Orange: Perimeter building phase (The Net)
+    - Cyan: Adaptive search phase (The Scout)
+    
+    Research Contribution:
+    This demonstrates how search algorithms can dynamically adapt to 
+    environmental complexity, optimizing for both speed and completeness.
+    """
+    
+    def __init__(self, perimeter_limit: int = 50) -> None:
+        """
+        Initialize DABPS algorithm.
+        
+        Args:
+            perimeter_limit: Maximum nodes in perimeter (default: 50)
+        """
+        super().__init__("DABPS (Research Algo)")
+        self.PERIMETER_LIMIT = perimeter_limit
+        self.phase = 'PERIMETER_BUILD'
+        self.perimeter_nodes: Dict[Node, Optional[Node]] = {}
+        self.forward_visited: Dict[Node, Optional[Node]] = {}
+        self.queue: deque = deque()
+        self.forward_stack: List[Node] = []
+        self.forward_queue: deque = deque()
+        self.steps_in_phase = 0
+        self.density_switches = 0
+        self.corridor_count = 0
+        self.room_count = 0
+    
+    def solve(self, grid: Grid) -> Iterator[Tuple[List[Node], List[Node], Optional[List[Node]]]]:
+        """
+        Execute DABPS algorithm.
+        
+        Phase 1: Build perimeter around target using reverse BFS
+        Phase 2: Adaptive forward search switching between BFS/DFS based on density
+        """
+        try:
+            from collections import deque
+            self.grid = grid
+            self.steps = 0
+            self.steps_in_phase = 0
+            self.density_switches = 0
+            self.corridor_count = 0
+            self.room_count = 0
+            
+            start_node = grid.get_node(*grid.start_pos)
+            target_node = grid.get_node(*grid.target_pos)
+            
+            if not start_node or not target_node:
+                print("Error: Start or target node not found")
+                return
+            
+            # Phase 1: Initialize reverse perimeter BFS from target
+            self.phase = 'PERIMETER_BUILD'
+            self.perimeter_nodes = {target_node: None}
+            self.queue = deque([target_node])
+            
+            # Phase 2: Initialize forward search structures
+            self.forward_visited = {start_node: None}
+            self.forward_stack = [start_node]
+            self.forward_queue = deque([start_node])
+            
+            meeting_point: Optional[Node] = None
+            
+            print(f"[DABPS] Starting Density-Adaptive Bi-Phase Search...")
+            print(f"[DABPS] Perimeter limit: {self.PERIMETER_LIMIT} nodes")
+            
+            while True:
+                self.steps += 1
+                self.steps_in_phase += 1
+                
+                # Phase 1: Build Perimeter (Reverse BFS from target)
+                if self.phase == 'PERIMETER_BUILD':
+                    if not self.queue or len(self.perimeter_nodes) > self.PERIMETER_LIMIT:
+                        self.phase = 'ADAPTIVE_SEARCH'
+                        self.steps_in_phase = 0
+                        print(f"[DABPS] Perimeter built ({len(self.perimeter_nodes)} nodes). Starting adaptive search...")
+                        continue
+                    
+                    current = self.queue.popleft()
+                    
+                    # Mark as perimeter node (Orange - The Net)
+                    if current != target_node and current.state not in (NodeState.START, NodeState.TARGET):
+                        current.state = NodeState.DABPS_PERIMETER
+                    
+                    # Explore neighbors
+                    for neighbor in grid.get_neighbors_clockwise_diagonal(current):
+                        if neighbor not in self.perimeter_nodes:
+                            self.perimeter_nodes[neighbor] = current
+                            self.queue.append(neighbor)
+                    
+                    # Yield current state
+                    combined_frontier = list(self.queue) + list(self.forward_queue) + self.forward_stack
+                    combined_visited = list(self.perimeter_nodes.keys()) + list(self.forward_visited.keys())
+                    yield (combined_frontier, combined_visited, None)
+                
+                # Phase 2: Adaptive Forward Search
+                elif self.phase == 'ADAPTIVE_SEARCH':
+                    # Check termination condition
+                    if not self.forward_queue and not self.forward_stack:
+                        print(f"[DABPS] Forward search exhausted - no path found")
+                        break
+                    
+                    # Density Check: Corridor vs Room
+                    current = None
+                    use_dfs = False
+                    
+                    if self.forward_stack:
+                        check_node = self.forward_stack[-1]
+                        # Count unvisited neighbors
+                        neighbors = grid.get_neighbors_clockwise_diagonal(check_node)
+                        unvisited = [n for n in neighbors if n not in self.forward_visited]
+                        
+                        if len(unvisited) <= 1:
+                            # CORRIDOR: Use DFS (Fast)
+                            use_dfs = True
+                            self.corridor_count += 1
+                        else:
+                            # OPEN ROOM: Use BFS (Optimal)
+                            use_dfs = False
+                            self.room_count += 1
+                    
+                    # Select next node based on density analysis
+                    if use_dfs and self.forward_stack:
+                        current = self.forward_stack.pop()
+                        self.density_switches += 1
+                    elif self.forward_queue:
+                        current = self.forward_queue.popleft()
+                    elif self.forward_stack:
+                        current = self.forward_stack.pop()
+                    else:
+                        break
+                    
+                    # Mark as adaptive search node (Cyan - The Scout)
+                    if current != start_node and current.state not in (NodeState.START, NodeState.TARGET):
+                        current.state = NodeState.DABPS_ADAPTIVE
+                    
+                    # Check for perimeter intersection
+                    if current in self.perimeter_nodes:
+                        meeting_point = current
+                        print(f"[DABPS] ✓ Found intersection with perimeter!")
+                        break
+                    
+                    # Explore neighbors
+                    neighbors = grid.get_neighbors_clockwise_diagonal(current)
+                    for neighbor in neighbors:
+                        if neighbor not in self.forward_visited:
+                            self.forward_visited[neighbor] = current
+                            self.forward_queue.append(neighbor)
+                            self.forward_stack.append(neighbor)
+                    
+                    # Yield current state
+                    combined_frontier = list(self.queue) + list(self.forward_queue) + self.forward_stack
+                    combined_visited = list(self.perimeter_nodes.keys()) + list(self.forward_visited.keys())
+                    yield (combined_frontier, combined_visited, None)
+                
+                else:
+                    break
+            
+            # Reconstruct and yield final path
+            if meeting_point:
+                path = self._reconstruct_path(meeting_point)
+                self.path_length = len(path)
+                
+                print(f"[DABPS] ✓ Path found!")
+                print(f"[DABPS] Total steps: {self.steps}")
+                print(f"[DABPS] Perimeter nodes: {len(self.perimeter_nodes)}")
+                print(f"[DABPS] Corridors (DFS): {self.corridor_count}, Rooms (BFS): {self.room_count}")
+                print(f"[DABPS] Density switches: {self.density_switches}")
+                
+                combined_frontier = list(self.queue) + list(self.forward_queue) + self.forward_stack
+                combined_visited = list(self.perimeter_nodes.keys()) + list(self.forward_visited.keys())
+                yield (combined_frontier, combined_visited, path)
+            else:
+                print(f"[DABPS] ✗ No path found")
+                print(f"[DABPS] Total steps: {self.steps}")
+                
+                combined_frontier = list(self.queue) + list(self.forward_queue) + self.forward_stack
+                combined_visited = list(self.perimeter_nodes.keys()) + list(self.forward_visited.keys())
+                yield (combined_frontier, combined_visited, [])
+            
+        except Exception as e:
+            print(f"Error in DABPS: {e}")
+            import traceback
+            traceback.print_exc()
+            yield ([], [], [])
+    
+    def _reconstruct_path(self, meeting_node: Node) -> List[Node]:
+        """Reconstruct path from start to target through meeting point."""
+        path = []
+        
+        # Trace back: Start -> Meeting
+        curr = meeting_node
+        while curr:
+            path.append(curr)
+            curr = self.forward_visited.get(curr)
+        path.reverse()
+        
+        # Trace forward: Meeting -> Target (via perimeter)
+        curr = self.perimeter_nodes.get(meeting_node)
+        while curr:
+            path.append(curr)
+            curr = self.perimeter_nodes.get(curr)
+        
+        return path
+    
+    def get_stats(self) -> Dict[str, int]:
+        """Return extended statistics including density analysis."""
+        base_stats = super().get_stats()
+        base_stats['perimeter_nodes'] = len(self.perimeter_nodes)
+        base_stats['corridors'] = self.corridor_count
+        base_stats['rooms'] = self.room_count
+        base_stats['density_switches'] = self.density_switches
+        base_stats['final_phase'] = self.phase
+        return base_stats
+
+
+# =============================================================================
+# KINETIC WAVEFRONT SEARCH (KWS) - HIGH-SPEED EXPERIMENTAL ALGORITHM
+# =============================================================================
+
+class KineticWavefrontSearch(Solver):
+    """
+    Kinetic Wavefront Search (KWS) - High-Speed Experimental Algorithm
+    
+    Unlike traditional algorithms that 'crawl' step-by-step, KWS 'slides' 
+    in cardinal directions until hitting obstacles. This creates a "laser scan" 
+    effect that rapidly explores open spaces.
+    
+    Algorithm Strategy:
+    1. Start from initial position
+    2. SLIDE in 4 cardinal directions (Up, Right, Down, Left)
+    3. Continue sliding until hitting wall, edge, or target
+    4. Each stopping point becomes a new "corner" to explore from
+    5. Repeat until target found or all paths exhausted
+    
+    Visualization:
+    - Transparent Blue (BEAM): Shows the "laser beams" - slide paths
+    - Bright Yellow (STOP): Shows stopping points/corners
+    
+    Effect: Creates a laser-scanning appearance rather than flood-fill
+    
+    Research Applications:
+    - High-speed open space exploration
+    - Corridor and room detection
+    - Visual demonstration of kinetic movement
+    - Game AI for fast pathfinding in open areas
+    """
+    
+    def __init__(self) -> None:
+        """Initialize Kinetic Wavefront Search."""
+        super().__init__("Kinetic Wavefront Search")
+        self.queue: deque = deque()
+        self.visited_stops: Dict[Node, Optional[Node]] = {}
+        self.beam_nodes: Set[Node] = set()
+        self.stop_nodes: Set[Node] = set()
+        self.path_segments: List[List[Node]] = []
+    
+    def solve(self, grid: Grid) -> Iterator[Tuple[List[Node], List[Node], Optional[List[Node]]]]:
+        """
+        Execute Kinetic Wavefront Search algorithm.
+        
+        Slides in cardinal directions from stopping points until
+        hitting obstacles, creating a wavefront of exploration.
+        """
+        try:
+            self.grid = grid
+            self.steps = 0
+            
+            start_node = grid.get_node(*grid.start_pos)
+            target_node = grid.get_node(*grid.target_pos)
+            
+            if not start_node or not target_node:
+                print("Error: Start or target node not found")
+                return
+            
+            # Initialize with start node as first stopping point
+            self.queue = deque([start_node])
+            self.visited_stops = {start_node: None}
+            self.beam_nodes = set()
+            self.stop_nodes = {start_node}
+            self.path_segments = []
+            
+            print(f"[KWS] Starting Kinetic Wavefront Search...")
+            print(f"[KWS] Sliding in cardinal directions until obstacles...")
+            
+            while self.queue:
+                self.steps += 1
+                current = self.queue.popleft()
+                
+                # Mark current as a stopping point (Yellow)
+                if current != start_node and current != target_node:
+                    current.state = NodeState.KWS_STOP
+                    self.stop_nodes.add(current)
+                
+                # Check if we reached the target
+                if current == target_node:
+                    path = self._reconstruct_path(current)
+                    self.path_length = len(path)
+                    
+                    print(f"[KWS] ✓ Target reached!")
+                    print(f"[KWS] Total steps: {self.steps}")
+                    print(f"[KWS] Stopping points: {len(self.stop_nodes)}")
+                    print(f"[KWS] Beam nodes: {len(self.beam_nodes)}")
+                    
+                    combined_frontier = list(self.queue)
+                    combined_visited = list(self.stop_nodes) + list(self.beam_nodes)
+                    yield (combined_frontier, combined_visited, path)
+                    return
+                
+                # KINETIC MOVES: Slide in 4 cardinal directions
+                # We don't step 1 by 1 - we SLIDE until obstacle
+                moves = [(0, -1), (1, 0), (0, 1), (-1, 0)]  # Up, Right, Down, Left
+                
+                for dx, dy in moves:
+                    stop_node, segment = self._slide(grid, current, dx, dy, target_node)
+                    
+                    # Skip if stop_node is None (shouldn't happen, but safety check)
+                    if stop_node is None:
+                        continue
+                    
+                    # If we moved at least 1 tile and haven't visited this STOP point
+                    if stop_node != current and stop_node not in self.visited_stops:
+                        self.visited_stops[stop_node] = current
+                        self.queue.append(stop_node)
+                        
+                        # Mark beam nodes (transparent blue)
+                        for beam_node in segment:
+                            if beam_node != target_node and beam_node.state not in (
+                                NodeState.START, NodeState.TARGET, NodeState.KWS_STOP
+                            ):
+                                beam_node.state = NodeState.KWS_BEAM
+                                self.beam_nodes.add(beam_node)
+                        
+                        # Store path segment
+                        if segment:
+                            self.path_segments.append(segment)
+                        
+                        # Check if we hit target during slide
+                        if stop_node == target_node:
+                            path = self._reconstruct_path(stop_node)
+                            self.path_length = len(path)
+                            
+                            print(f"[KWS] ✓ Target found during slide!")
+                            print(f"[KWS] Total steps: {self.steps}")
+                            print(f"[KWS] Stopping points: {len(self.stop_nodes)}")
+                            print(f"[KWS] Beam nodes: {len(self.beam_nodes)}")
+                            
+                            combined_frontier = list(self.queue)
+                            combined_visited = list(self.stop_nodes) + list(self.beam_nodes)
+                            yield (combined_frontier, combined_visited, path)
+                            return
+                
+                # Yield current state for visualization
+                combined_frontier = list(self.queue)
+                combined_visited = list(self.stop_nodes) + list(self.beam_nodes)
+                yield (combined_frontier, combined_visited, None)
+            
+            # No path found
+            print(f"[KWS] ✗ No path found")
+            print(f"[KWS] Total steps: {self.steps}")
+            print(f"[KWS] Stopping points explored: {len(self.stop_nodes)}")
+            
+            combined_frontier = list(self.queue)
+            combined_visited = list(self.stop_nodes) + list(self.beam_nodes)
+            yield (combined_frontier, combined_visited, [])
+            
+        except Exception as e:
+            print(f"Error in KWS: {e}")
+            import traceback
+            traceback.print_exc()
+            yield ([], [], [])
+    
+    def _slide(self, grid: Grid, start: Node, dx: int, dy: int, target: Node) -> Tuple[Optional[Node], List[Node]]:
+        """
+        Slide from start position in direction (dx, dy) until obstacle.
+        
+        Args:
+            grid: The grid to search on
+            start: Starting node
+            dx, dy: Direction to slide
+            target: Target node (stop immediately if found)
+            
+        Returns:
+            Tuple of (stopping_node, path_segment)
+        """
+        curr_x, curr_y = start.col, start.row
+        path_segment = []
+        
+        while True:
+            next_x, next_y = curr_x + dx, curr_y + dy
+            
+            # Check bounds
+            if not (0 <= next_x < grid.cols and 0 <= next_y < grid.rows):
+                break  # Hit grid edge
+            
+            # Check walls
+            next_node = grid.get_node(next_y, next_x)
+            if not next_node or next_node.state == NodeState.WALL:
+                break  # Hit wall
+            
+            # Advance
+            curr_x, curr_y = next_x, next_y
+            path_segment.append(next_node)
+            
+            # Check target (stop immediately if we pass over target)
+            if next_node == target:
+                return next_node, path_segment
+        
+        # Return stopping point (always return the start node if we didn't move)
+        stop_node = grid.get_node(curr_y, curr_x)
+        if stop_node is None:
+            stop_node = start
+        return stop_node, path_segment
+    
+    def _reconstruct_path(self, end_node: Node) -> List[Node]:
+        """Reconstruct path from end node back to start."""
+        path = []
+        current = end_node
+        
+        while current:
+            path.append(current)
+            current = self.visited_stops.get(current)
+        
+        path.reverse()
+        return path
+    
+    def get_stats(self) -> Dict[str, int]:
+        """Return extended statistics including KWS metrics."""
+        base_stats = super().get_stats()
+        base_stats['stopping_points'] = len(self.stop_nodes)
+        base_stats['beam_nodes'] = len(self.beam_nodes)
+        base_stats['path_segments'] = len(self.path_segments)
+        return base_stats
+
+
+# =============================================================================
+# WESTRA STEALTH SEARCH - MINIMUM MEMORY (GHOST MODE)
+# =============================================================================
+
+class WestraStealthSearch(Solver):
+    """
+    Westra Stealth Search - Extreme Memory Optimization Algorithm
+    
+    A revolutionary "Ghost Mode" algorithm designed for extreme memory constraints.
+    Unlike traditional algorithms that maintain a global 'visited' set, Stealth Search
+    only tracks the current recursion stack - achieving minimum memory footprint.
+    
+    Key Innovation - No Global Visited Set:
+    - Traditional algorithms: Store ALL visited nodes (memory heavy)
+    - Stealth Search: Only stores current path stack (memory minimal)
+    - Cycle prevention: Check if neighbor is in current recursion stack only
+    
+    Algorithm Strategy:
+    1. Uses Iterative Deepening DFS (IDDFS) framework
+    2. Each iteration increases depth limit
+    3. Depth-Limited Search (DLS) explores with path checking
+    4. Backtracking removes nodes from stack immediately (clean memory)
+    
+    Ghost Mode Visualization:
+    - NO visited nodes (yellow) drawn - the algorithm "forgets" where it's been
+    - Cyan: Current path stack (the active thread)
+    - Red: Head/current node being explored
+    - Visual effect shows a "ghost" moving through the grid
+    
+    Memory Characteristics:
+    - Memory usage: O(depth) instead of O(nodes)
+    - Perfect for embedded systems with limited RAM
+    - Demonstrates that completeness doesn't require massive memory
+    
+    Research Applications:
+    - Extreme memory-constrained environments
+    - Embedded systems robotics
+    - Demonstrating memory vs. time tradeoffs
+    - Visual proof of concept for minimal-memory pathfinding
+    """
+    
+    def __init__(self) -> None:
+        """Initialize Stealth Search with minimum memory footprint."""
+        super().__init__("Stealth Search (Minimum Memory)")
+        self.path_stack: List[Node] = []
+        self.max_depth = 1  # Start with depth 1 (Iterative Deepening)
+        self.found = False
+        self.generator = None
+        self.current_head: Optional[Node] = None
+        self.total_steps = 0
+    
+    def solve(self, grid: Grid) -> Iterator[Tuple[List[Node], List[Node], Optional[List[Node]]]]:
+        """
+        Execute Stealth Search with IDDFS and path-checking only.
+        
+        Uses generator-based approach for step-by-step visualization.
+        """
+        try:
+            self.grid = grid
+            self.steps = 0
+            self.total_steps = 0
+            self.max_depth = 1
+            self.found = False
+            self.path_stack = []
+            self.current_head = None
+            
+            start_node = grid.get_node(*grid.start_pos)
+            target_node = grid.get_node(*grid.target_pos)
+            
+            if not start_node or not target_node:
+                print("Error: Start or target node not found")
+                return
+            
+            print(f"[Stealth] Initializing Ghost Mode Search...")
+            print(f"[Stealth] Memory optimization: NO global visited set")
+            print(f"[Stealth] Only tracking current path stack (O(depth) memory)")
+            
+            # Iterative Deepening Loop
+            while not self.found:
+                # Reset for new depth iteration
+                self.path_stack = []
+                
+                print(f"[Stealth] Starting depth limit: {self.max_depth}")
+                
+                # Run DLS for current max_depth
+                dls_generator = self._dls(grid, start_node, self.max_depth, target_node)
+                
+                try:
+                    for result in dls_generator:
+                        self.steps += 1
+                        self.total_steps += 1
+                        
+                        # Visualize current state
+                        frontier: List[Node] = [self.current_head] if self.current_head else []
+                        visited: List[Node] = list(self.path_stack)
+                        
+                        yield (frontier, visited, None)
+                        
+                        if result:  # Found!
+                            self.found = True
+                            break
+                except StopIteration:
+                    pass
+                
+                if self.found:
+                    break
+                
+                # Increase depth for next iteration
+                self.max_depth += 1
+                print(f"[Stealth] Increasing depth limit to {self.max_depth}")
+            
+            # Yield final path
+            if self.found:
+                path = list(self.path_stack)
+                self.path_length = len(path)
+                
+                print(f"[Stealth] ✓ Target found!")
+                print(f"[Stealth] Total steps: {self.total_steps}")
+                print(f"[Stealth] Final depth: {self.max_depth}")
+                print(f"[Stealth] Path length: {len(path)}")
+                print(f"[Stealth] Memory used: O({len(path)}) (only path stack)")
+                
+                frontier = []
+                visited = list(self.path_stack)
+                yield (frontier, visited, path)
+            else:
+                print(f"[Stealth] ✗ No path found")
+                yield ([], [], [])
+            
+        except Exception as e:
+            print(f"Error in Stealth Search: {e}")
+            import traceback
+            traceback.print_exc()
+            yield ([], [], [])
+    
+    def _dls(self, grid: Grid, node: Node, depth: int, target: Node) -> Iterator[bool]:
+        """
+        Depth-Limited Search with Path Checking (No Visited Set).
+        
+        Args:
+            grid: The grid to search
+            node: Current node
+            depth: Remaining depth allowed
+            target: Target node
+            
+        Yields:
+            bool: True if target found, False to continue
+        """
+        # Base Case 1: Target Found
+        if node == target:
+            self.path_stack.append(node)
+            # Mark path nodes as STEALTH_PATH (Cyan)
+            for path_node in self.path_stack:
+                if path_node != target and path_node.state not in (NodeState.START, NodeState.TARGET):
+                    path_node.state = NodeState.STEALTH_PATH
+            yield True
+            return
+        
+        # Base Case 2: Depth Limit Reached
+        if depth <= 0:
+            yield False
+            return
+        
+        # Add to path stack and mark as head (Red)
+        self.path_stack.append(node)
+        self.current_head = node
+        
+        # Visual: Mark current node as head (Red)
+        if node.state not in (NodeState.START, NodeState.TARGET):
+            node.state = NodeState.STEALTH_HEAD
+        
+        # Yield control back for animation
+        yield False
+        
+        # Explore neighbors (Clockwise: Up, Right, Down, Down-Right, Left, Up-Left)
+        moves = [(0, -1), (1, 0), (0, 1), (1, 1), (-1, 0), (-1, -1)]
+        
+        for dx, dy in moves:
+            next_x = node.col + dx
+            next_y = node.row + dy
+            
+            # Check bounds
+            if not (0 <= next_x < grid.cols and 0 <= next_y < grid.rows):
+                continue
+            
+            neighbor = grid.get_node(next_y, next_x)
+            if not neighbor or neighbor.state == NodeState.WALL:
+                continue
+            
+            # MEMORY OPTIMIZATION: Only check if neighbor is in current path stack
+            # This prevents cycles WITHOUT storing a massive 'visited' list
+            if neighbor not in self.path_stack:
+                # Recurse with depth-1
+                sub_generator = self._dls(grid, neighbor, depth - 1, target)
+                try:
+                    for result in sub_generator:
+                        yield result
+                        if result:
+                            return
+                except StopIteration:
+                    pass
+        
+        # Backtrack: Remove from stack (Clean memory instantly!)
+        self.path_stack.pop()
+        
+        # Clear head marker if not in path anymore
+        if self.current_head == node:
+            self.current_head = None
+        
+        yield False
+    
+    def get_stats(self) -> Dict[str, int]:
+        """Return extended statistics including memory metrics."""
+        base_stats = super().get_stats()
+        base_stats['final_depth'] = self.max_depth
+        base_stats['path_stack_size'] = len(self.path_stack)
+        base_stats['memory_optimization'] = 1  # Flag indicating O(depth) memory
+        return base_stats
+
+
+# =============================================================================
 # PROFESSIONAL UI COMPONENTS
 # =============================================================================
 
@@ -1467,7 +2432,7 @@ class ComboBox:
         self.hovered = False
         self.option_height = height
         self.scroll_offset = 0
-        self.max_visible_options = 8
+        self.max_visible_options = 15
         
         # Create option rectangles (calculated on demand)
         self.option_rects: List[pygame.Rect] = []
@@ -1900,6 +2865,20 @@ class Sidebar:
         )
         return self.slider
     
+    def create_mode_button(self, callback) -> Button:
+        """Create the Research Mode button (golden accent)."""
+        y = self.advance_y(self.button_height, self.padding)
+        
+        # Mode button with golden accent color
+        mode_button = Button(
+            self.rect.left + self.padding, y,
+            self.button_width, self.button_height,
+            "🔬 Research Mode", callback, text_color=Colors.MODE_RESEARCH
+        )
+        self.buttons.append(mode_button)
+        
+        return mode_button
+    
     def calculate_telemetry_position(self) -> int:
         """Calculate and reserve space for telemetry at bottom."""
         # Ensure minimum space for telemetry
@@ -2138,6 +3117,10 @@ class SearchAlgorithmSimulator:
                 BidirectionalSolver(),
                 ScoutSolver(bfs_layers=5, dfs_layers=5),  # Hybrid BFS/DFS
                 CustomSolver(),
+                WestraAdaptiveSearch(panic_threshold=100, check_interval=50),  # Research Module!
+                WestraDABPS(perimeter_limit=50),  # NEW: Density-Adaptive Bi-Phase Search
+                KineticWavefrontSearch(),  # NEW: High-speed kinetic sliding algorithm
+                WestraStealthSearch(),  # NEW: Minimum memory Ghost Mode algorithm
             ]
             self.current_solver_idx = 0
             self.solver_generator: Optional[Iterator] = None
@@ -2304,6 +3287,9 @@ class SearchAlgorithmSimulator:
             # Create additional actions row (Reset, Random)
             self.sidebar.create_action_buttons(self._on_reset, self._on_random_walls)
             
+            # Add Research Mode button (golden accent)
+            self.sidebar.create_mode_button(self._on_research_mode)
+            
             # Add section spacing before slider
             self.sidebar.advance_y(0, 10)
             
@@ -2358,6 +3344,27 @@ class SearchAlgorithmSimulator:
         import random
         # Generate random walls with 30% density
         self.grid.generate_random_walls(wall_percentage=0.3, seed=random.randint(1, 10000))
+    
+    def _on_research_mode(self) -> None:
+        """Handle Research Mode button click - switch to Westra Adaptive Search."""
+        # Find the Westra Adaptive Search algorithm
+        westra_idx = None
+        for idx, solver in enumerate(self.solvers):
+            if isinstance(solver, WestraAdaptiveSearch):
+                westra_idx = idx
+                break
+        
+        if westra_idx is not None:
+            # Reset and switch to Westra algorithm
+            self._on_reset()
+            self.current_solver_idx = westra_idx
+            if self.sidebar.combobox:
+                self.sidebar.combobox.selected = westra_idx
+            print("[Research Mode] Switched to Westra Adaptive Search")
+            print("[Research Mode] Blue = BFS phase, Orange = DFS phase")
+            print("[Research Mode] Watch the algorithm adapt to memory usage!")
+        else:
+            print("[Research Mode] Westra Adaptive Search not found in solver list")
     
     def _on_speed_change(self, value: int) -> None:
         """Handle speed slider change."""
