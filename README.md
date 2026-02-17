@@ -1,8 +1,16 @@
-# Search Algorithm Simulator v2.0
+# Search Algorithm Simulator v6.0
 
-A professional, interactive Pygame-based visualization tool for exploring and comparing various search algorithms on a 2D grid. Built for AI/CS researchers and algorithm analysis.
+A professional, interactive Pygame-based visualization tool for exploring and comparing various search algorithms on a 2D grid. Built for AI/CS Research and algorithm analysis.
 
-**🆕 New in v2.0**: Fullscreen support, dynamic window resizing, and completely refactored UI with professional dark theme!
+**👻 New in v6.0**: Stealth Search (Minimum Memory) - Revolutionary "Ghost Mode" algorithm that operates with O(depth) memory instead of O(nodes)!
+
+**Previously in v5.0**: KWS (Kinetic Wavefront Search) - High-speed experimental algorithm that "slides" in cardinal directions with laser-like beam visualization!
+
+**Previously in v4.0**: DABPS (Density-Adaptive Bi-Phase Search) - Revolutionary topology-aware algorithm with perimeter building and density-based strategy switching!
+
+**Previously in v3.0**: Westra Adaptive Search Research Module with memory-adaptive algorithm and real-time color visualization!
+
+**Previously in v2.0**: Fullscreen support, dynamic window resizing, and completely refactored UI with professional dark theme!
 
 ![Python Version](https://img.shields.io/badge/python-3.13+-blue.svg)
 ![Pygame Version](https://img.shields.io/badge/pygame-2.6+-green.svg)
@@ -30,7 +38,7 @@ A professional, interactive Pygame-based visualization tool for exploring and co
 The Search Algorithm Simulator provides an interactive environment for visualizing how different search algorithms explore a grid to find paths from a start node to a target node. It features real-time visualization, VCR-style controls, comprehensive statistics, and innovative hybrid algorithms.
 
 **Key Capabilities:**
-- 9 different search algorithms
+- 13 different search algorithms (including 5 research algorithms)
 - Real-time telemetry dashboard
 - Step-by-step execution with rewind
 - Random maze generation
@@ -39,6 +47,10 @@ The Search Algorithm Simulator provides an interactive environment for visualizi
 - **Fullscreen & Maximize mode** (NEW v2.0)
 - **Dynamic window resizing with auto-scaling grid** (NEW v2.0)
 - **Professional dark UI theme with header bar** (NEW v2.0)
+- **DABPS topology-aware algorithm** (NEW v4.0)
+- **KWS high-speed kinetic algorithm** (NEW v5.0)
+- **Stealth Search minimum memory algorithm** (NEW v6.0)
+- **Research modules with visual color transitions**
 
 ## Features
 
@@ -60,6 +72,15 @@ The Search Algorithm Simulator provides an interactive environment for visualizi
 - 🟣 **Purple**: Final path
 - ⬛ **Dark Gray**: Walls (obstacles)
 - ⬜ **Light Gray**: Empty cells
+- 🔵 **Blue**: Research BFS phase (Westra Algorithm)
+- 🟠 **Orange**: Research DFS phase (Westra Algorithm)
+- 🟡 **Gold**: Research Mode indicator
+- 🟠 **Orange**: DABPS Perimeter phase (The Net)
+- 🔵 **Cyan**: DABPS Adaptive phase (The Scout)
+- 🔵 **Transparent Blue**: KWS Beam phase (Scan rays)
+- 🟡 **Bright Yellow**: KWS Stop phase (Stopping points)
+- 🔵 **Cyan**: Stealth Path (Ghost Mode current thread)
+- 🔴 **Red**: Stealth Head (Ghost Mode current node)
 
 #### UI Theme (Professional Dark)
 - **Sidebar Background**: Dark Slate Grey (#2d2d2d)
@@ -185,6 +206,43 @@ python search_simulator.py
 - **Characteristics**: Memory-bounded, uses heuristic sorting
 - **Beam Width**: Configurable (default: 10)
 
+### 10. Westra Adaptive Search (Research Module) 🔬 NEW
+- **Type**: Research, Adaptive
+- **Strategy**: Dynamic BFS/DFS switching based on memory usage
+- **Innovation**: Automatically adapts to map complexity in real-time
+- **Panic Threshold**: 100 nodes (triggers DFS when exceeded)
+- **Check Interval**: Every 50 steps
+- **Visualization**: Blue (BFS) → Orange (DFS) color transition
+- **Use Case**: Research into memory-adaptive search algorithms
+
+### 11. DABPS - Density-Adaptive Bi-Phase Search 🆕 NEWEST
+- **Type**: Research, Bi-Phase, Density-Adaptive
+- **Strategy**: Two-phase approach with perimeter building + density-based switching
+- **Phase 1**: Reverse Perimeter BFS (builds "The Net" around target)
+- **Phase 2**: Adaptive forward search (switches BFS/DFS based on neighbor density)
+- **Innovation**: Uses corridor detection (≤1 neighbor = DFS, >1 neighbor = BFS)
+- **Visualization**: Orange (Perimeter/Net) → Cyan (Adaptive/Scout)
+- **Use Case**: Research into topology-aware pathfinding algorithms
+
+### 12. Kinetic Wavefront Search (KWS) ⚡ HIGH-SPEED
+- **Type**: Experimental, High-Speed, Kinetic
+- **Strategy**: "Slides" in cardinal directions until hitting obstacles (not step-by-step crawling)
+- **Movement**: Kinetic sliding (Up, Right, Down, Left) until wall/edge/target
+- **Innovation**: Stopping points create wavefront corners; beams show laser-like scan paths
+- **Visualization**: Transparent Blue (Beams/Scan Rays) + Bright Yellow (Stopping Points/Corners)
+- **Effect**: Looks like laser scanning the map, not flood fill
+- **Use Case**: High-speed open space exploration, corridor detection, visual demonstration of kinetic movement
+
+### 13. Stealth Search (Minimum Memory) 👻 GHOST MODE
+- **Type**: Research, Memory-Optimized, Stealth
+- **Strategy**: IDDFS with path-checking only (NO global visited set)
+- **Memory Model**: O(depth) instead of O(nodes) - only tracks current recursion stack
+- **Innovation**: "Ghost Mode" - algorithm "forgets" where it's been to save memory
+- **Cycle Prevention**: Only checks if neighbor is in current path stack
+- **Visualization**: Cyan (Current Path) + Red (Head) - NO visited nodes (yellow) drawn
+- **Effect**: Visualizes a "ghost" moving through the grid
+- **Use Case**: Extreme memory-constrained environments, embedded systems, demonstrating memory vs. time tradeoffs
+
 ## Innovation Lab
 
 ### The Scout Algorithm
@@ -203,6 +261,291 @@ Layers:  [5]    [5]    [5]    [5]
 - **BFS Phase**: Gets a broad overview of the landscape
 - **DFS Phase**: Investigates promising areas in depth
 - **Alternation**: Prevents getting stuck in either mode
+
+### Westra Adaptive Search (Research Module) 🔬
+
+A cutting-edge research algorithm that demonstrates **memory-adaptive search behavior**:
+
+```
+Algorithm Behavior:
+╔════════════════════════════════════════════════════════════╗
+║  1. Start with Bidirectional BFS                           ║
+║     → Explores efficiently from both start and target      ║
+║                                                            ║
+║  2. Every 50 steps: Check memory usage                     ║
+║     → If queue_size > 100: MEMORY PANIC!                   ║
+║     → Switch to DFS to reduce queue size                   ║
+║                                                            ║
+║  3. DFS Phase: Drill deep to reduce memory                 ║
+║     → Orange nodes show DFS exploration                    ║
+║     → If dead end: Revert to BFS                           ║
+║                                                            ║
+║  4. Visual Color Shift: Blue → Orange → Blue               ║
+║     → Shows real-time adaptation to complexity             ║
+╚════════════════════════════════════════════════════════════╝
+```
+
+**Key Research Contributions:**
+- **Dynamic Strategy Switching**: Automatically adapts based on runtime conditions
+- **Memory-Aware**: Monitors queue size to prevent memory overflow
+- **Visual Demonstration**: Color changes show adaptation in real-time
+- **Bidirectional Start**: Uses bidirectional BFS for optimal initial exploration
+
+**Color Coding:**
+- 🔵 **Blue Nodes (RESEARCH_BFS)**: BFS exploration phase
+- 🟠 **Orange Nodes (RESEARCH_DFS)**: DFS exploration phase  
+- 🟡 **Gold Button**: Research Mode indicator
+
+**Research Applications:**
+- Memory-constrained search environments
+- Dynamic algorithm selection
+- Real-time complexity adaptation
+- Visual demonstration of algorithm behavior
+
+### DABPS - Density-Adaptive Bi-Phase Search 🆕
+
+A revolutionary **topology-aware search algorithm** that adapts to map structure:
+
+```
+DABPS Algorithm - Two Phase Approach:
+╔════════════════════════════════════════════════════════════╗
+║  PHASE 1: REVERSE PERIMETER BFS (The Net)                  ║
+║  ─────────────────────────────────────────                 ║
+║  • Start from TARGET, expand outward                       ║
+║  • Build a perimeter of nodes around target                ║
+║  • Limit: 50 nodes (configurable)                          ║
+║  • Color: Orange (The Net)                                 ║
+║                                                            ║
+║  PHASE 2: ADAPTIVE FORWARD SEARCH (The Scout)              ║
+║  ─────────────────────────────────────────                 ║
+║  • Start from START, move toward perimeter                 ║
+║  • Density Detection at each step:                         ║
+║                                                            ║
+║    CORRIDOR (≤1 unvisited neighbor):                       ║
+║    → Use DFS (Fast, linear traversal)                      ║
+║    → "We're in a tunnel, move fast!"                       ║
+║                                                            ║
+║    OPEN ROOM (>1 unvisited neighbor):                      ║
+║    → Use BFS (Optimal, broad exploration)                  ║
+║    → "We're in open space, explore carefully!"             ║
+║                                                            ║
+║  • Color: Cyan (The Scout)                                 ║
+║                                                            ║
+║  INTERCEPTION: When Scout meets Net                        ║
+║  → Path reconstructed through meeting point                ║
+╚════════════════════════════════════════════════════════════╝
+```
+
+**Why DABPS is Revolutionary:**
+
+1. **Topology Awareness**: Actually "sees" the map structure (corridors vs rooms)
+2. **Optimal Strategy Selection**: Chooses right algorithm for right situation
+3. **Two-Phase Approach**: Perimeter acts as a "net" to catch the forward search
+4. **Visual Storytelling**: Orange net + Cyan scout creates clear visual narrative
+
+**Color Coding:**
+- 🟠 **Orange (DABPS_PERIMETER)**: Perimeter building phase (The Net)
+- 🔵 **Cyan (DABPS_ADAPTIVE)**: Adaptive search phase (The Scout)
+- 🟢 **Green**: Start node
+- 🔴 **Red**: Target node
+
+**Research Applications:**
+- Topology-aware pathfinding
+- Game AI navigation (corridor vs room detection)
+- Robotics path planning
+- Maze-solving optimization
+- Algorithmic efficiency research
+
+**Console Output Example:**
+```
+[DABPS] Starting Density-Adaptive Bi-Phase Search...
+[DABPS] Perimeter limit: 50 nodes
+[DABPS] Perimeter built (50 nodes). Starting adaptive search...
+[DABPS] ✓ Found intersection with perimeter!
+[DABPS] ✓ Path found!
+[DABPS] Total steps: 245
+[DABPS] Perimeter nodes: 50
+[DABPS] Corridors (DFS): 89, Rooms (BFS): 34
+[DABPS] Density switches: 123
+```
+
+### Kinetic Wavefront Search (KWS) ⚡ HIGH-SPEED EXPERIMENTAL
+
+A revolutionary **high-speed kinetic algorithm** that "slides" rather than crawls:
+
+```
+KWS Algorithm - Kinetic Sliding Approach:
+╔════════════════════════════════════════════════════════════╗
+║  THE CONCEPT: "Don't crawl, SLIDE!"                       ║
+║                                                            ║
+║  Traditional algorithms: Step 1 → Step 2 → Step 3...      ║
+║  KWS: SLIDE until obstacle!                               ║
+║                                                            ║
+║  PHASE 1: KINETIC SLIDING                                  ║
+║  ─────────────────────────                                 ║
+║  • From stopping point, slide in 4 directions:            ║
+║    → UP: Slide until wall/edge/target                     ║
+║    → RIGHT: Slide until wall/edge/target                  ║
+║    → DOWN: Slide until wall/edge/target                   ║
+║    → LEFT: Slide until wall/edge/target                   ║
+║                                                            ║
+║  • Each slide creates a "beam" (laser-like path)          ║
+║  • End of slide = New "stopping point" (corner)           ║
+║                                                            ║
+║  PHASE 2: WAVEFRONT EXPANSION                              ║
+║  ─────────────────────────────                             ║
+║  • Each stopping point becomes new source                 ║
+║  • Wavefront expands from corners                         ║
+║  • Like ripples in a pond, but kinetic!                   ║
+║                                                            ║
+║  STOP CONDITION: Hit target or exhaust all paths          ║
+╚════════════════════════════════════════════════════════════╝
+```
+
+**Why KWS is Revolutionary:**
+
+1. **Kinetic Movement**: Doesn't step cell-by-cell; slides rapidly across open space
+2. **Laser-Scan Effect**: Visual beams show exploration like laser scanning
+3. **Corner Detection**: Automatically finds strategic stopping points
+4. **High-Speed**: Much faster in open areas compared to traditional algorithms
+5. **Visual Drama**: Transparent blue beams + bright yellow corners = stunning visualization
+
+**Color Coding:**
+- 🔵 **Transparent Blue (KWS_BEAM)**: Slide beams / scan rays
+- 🟡 **Bright Yellow (KWS_STOP)**: Stopping points / corners
+- 🟢 **Green**: Start node
+- 🔴 **Red**: Target node
+
+**Visual Effect:**
+```
+Traditional BFS (Flood Fill):
+▓▓▓▓▓
+▓▓▓▓▓  ← Gradual expansion
+▓▓▓▓▓
+
+KWS (Laser Scan):
+──────→  ← Instant slide
+  │
+  ↓
+──────→  ← Another slide
+```
+
+**Research Applications:**
+- High-speed open space exploration
+- Corridor and corner detection
+- Visual demonstration of kinetic algorithms
+- Game AI for fast pathfinding
+- Laser scanning simulation
+- Robotics rapid exploration
+
+**Console Output Example:**
+```
+[KWS] Starting Kinetic Wavefront Search...
+[KWS] Sliding in cardinal directions until obstacles...
+[KWS] ✓ Target reached!
+[KWS] Total steps: 15
+[KWS] Stopping points: 8
+[KWS] Beam nodes: 127
+```
+
+### Stealth Search (Minimum Memory) 👻 GHOST MODE
+
+A revolutionary **memory-optimized algorithm** that operates in "Ghost Mode":
+
+```
+Stealth Search - Extreme Memory Optimization:
+╔════════════════════════════════════════════════════════════╗
+║  THE PROBLEM: Traditional Algorithms Use Too Much Memory  ║
+║                                                            ║
+║  Traditional BFS/DFS: Store ALL visited nodes             ║
+║  → Memory: O(nodes) - Grows with grid size                ║
+║  → Example: 1000x1000 grid = 1,000,000 nodes stored!      ║
+║                                                            ║
+║  STEALTH SOLUTION: Only Store Current Path                ║
+║  → Memory: O(depth) - Grows with path length only         ║
+║  → Example: Same grid, but only 50 nodes in memory!       ║
+║                                                            ║
+║  THE GHOST MODE VISUALIZATION:                            ║
+║  ─────────────────────────────                            ║
+║                                                            ║
+║  Traditional Algorithm (With Visited Set):                ║
+║  ▓▓▓▓▓▓▓▓                                                ║
+║  ▓VISITED▓  ← Yellow shows everywhere it's been           ║
+║  ▓▓▓▓▓▓▓▓                                                ║
+║                                                            ║
+║  Stealth Search (Ghost Mode):                             ║
+║        ╱                                                 ║
+║       ╱   ← Only shows CURRENT path (Cyan)               ║
+║      ●     ← Current head (Red)                          ║
+║                                                            ║
+║  The algorithm "forgets" where it's been!                 ║
+║                                                            ║
+║  CYCLE PREVENTION (The Memory Trick):                     ║
+║  ───────────────────────────────────                      ║
+║  Instead of checking global 'visited' set:                ║
+║  → Check if neighbor is in current path stack ONLY        ║
+║  → This prevents loops without storing history            ║
+║                                                            ║
+║  ALGORITHM STRUCTURE:                                     ║
+║  ─────────────────────                                    ║
+║  1. Iterative Deepening DFS (IDDFS)                       ║
+║  2. Start with depth limit = 1                            ║
+║  3. Increase depth until target found                     ║
+║  4. Path-checking prevents cycles (no visited set!)       ║
+║  5. Backtracking removes nodes from stack instantly       ║
+╚════════════════════════════════════════════════════════════╝
+```
+
+**Why Stealth Search is Revolutionary:**
+
+1. **O(depth) Memory**: Only stores current path, not entire grid
+2. **Ghost Mode**: Visual shows only active path (cyan) + head (red)
+3. **No Yellow Visited Nodes**: Demonstrates "forgetting" for memory savings
+4. **Complete Algorithm**: Still finds optimal path (IDDFS property)
+5. **Visual Drama**: Eerie ghost-like movement through the grid
+
+**Color Coding:**
+- 🔵 **Cyan (STEALTH_PATH)**: Current path stack (the active thread)
+- 🔴 **Red (STEALTH_HEAD)**: Current head/node being explored
+- ❌ **NO Yellow Visited Nodes**: The algorithm forgets where it's been!
+- 🟢 **Green**: Start node
+- 🟣 **Purple**: Target node
+
+**Memory Comparison:**
+```
+Grid Size: 100x100 = 10,000 cells
+
+Algorithm          Memory Usage      Visual
+─────────────────────────────────────────────
+BFS                O(10,000)         Yellow everywhere
+DFS                O(10,000)         Yellow everywhere  
+Stealth Search     O(path length)    Cyan path only
+                   ~O(20-50)         Ghost Mode!
+```
+
+**Research Applications:**
+- Extreme memory-constrained environments
+- Embedded systems with limited RAM
+- Demonstrating memory vs. time tradeoffs
+- Visual proof of concept for minimal-memory pathfinding
+- Teaching algorithmic memory complexity
+- Robotics with limited onboard memory
+
+**Console Output Example:**
+```
+[Stealth] Initializing Ghost Mode Search...
+[Stealth] Memory optimization: NO global visited set
+[Stealth] Only tracking current path stack (O(depth) memory)
+[Stealth] Starting depth limit: 1
+[Stealth] Increasing depth limit to 2
+[Stealth] Increasing depth limit to 3
+...
+[Stealth] ✓ Target found!
+[Stealth] Total steps: 847
+[Stealth] Final depth: 15
+[Stealth] Path length: 15
+[Stealth] Memory used: O(15) (only path stack)
+```
 
 ### Randomized DFS (Chaos Mode)
 
@@ -272,6 +615,12 @@ All buttons use **Gunmetal Grey** with **Cyan hover accents**:
 **Actions** (Horizontal Row):
 - **↺ Reset**: Clear search state
 - **🎲 Random**: Generate random walls
+
+**Research Mode** 🔬 (Golden Accent Button):
+- **🔬 Research Mode**: Instantly switch to Westra Adaptive Search
+- **Gold Color**: Distinctive golden accent for research mode
+- **One-Click**: Automatically selects the Westra algorithm
+- **Visual Feedback**: Console logs show mode switch confirmation
 
 ---
 
@@ -502,6 +851,56 @@ The comprehensive test suite includes:
 - [ ] Application works on different screen resolutions
 - [ ] Multi-monitor setup handling works
 
+#### Research Module (Westra Adaptive Search)
+- [ ] Research Mode button switches to Westra algorithm
+- [ ] Blue nodes appear during BFS phase
+- [ ] Orange nodes appear during DFS phase
+- [ ] Color shift occurs when algorithm adapts
+- [ ] Console logs show mode switches and panic events
+- [ ] Algorithm handles memory panic correctly (queue > 100)
+- [ ] Algorithm reverts from DFS on dead end
+- [ ] Statistics show mode switch count
+- [ ] Bidirectional search works correctly
+- [ ] Path is found and displayed properly
+
+#### Research Module (DABPS - Density-Adaptive Bi-Phase Search)
+- [ ] DABPS algorithm appears in dropdown menu
+- [ ] Orange nodes appear during perimeter building phase (The Net)
+- [ ] Cyan nodes appear during adaptive search phase (The Scout)
+- [ ] Perimeter is built around target (up to 50 nodes)
+- [ ] Density detection works (corridor vs room)
+- [ ] DFS used in corridors (≤1 neighbor)
+- [ ] BFS used in open rooms (>1 neighbor)
+- [ ] Interception occurs when scout meets perimeter
+- [ ] Path is reconstructed correctly
+- [ ] Console logs show perimeter size and density statistics
+- [ ] Statistics show corridor count and room count
+
+#### Research Module (KWS - Kinetic Wavefront Search)
+- [ ] KWS algorithm appears in dropdown menu
+- [ ] Transparent blue beams appear during sliding
+- [ ] Bright yellow stopping points appear at corners
+- [ ] Algorithm slides in 4 cardinal directions (Up, Right, Down, Left)
+- [ ] Sliding stops at walls, edges, or target
+- [ ] Each stopping point becomes new wavefront source
+- [ ] Visual effect looks like laser scanning (not flood fill)
+- [ ] Path is found by connecting stopping points
+- [ ] Console logs show stopping points and beam node counts
+- [ ] Statistics show beam nodes and path segments
+
+#### Research Module (Stealth Search - Minimum Memory)
+- [ ] Stealth Search algorithm appears in dropdown menu
+- [ ] Cyan path shows current thread (Ghost Mode)
+- [ ] Red head shows current node being explored
+- [ ] NO yellow visited nodes drawn (algorithm "forgets")
+- [ ] Iterative deepening increases depth limit progressively
+- [ ] Path-checking only (no global visited set)
+- [ ] Memory usage is O(depth) not O(nodes)
+- [ ] Backtracking removes nodes from stack immediately
+- [ ] Target is found using IDDFS approach
+- [ ] Console logs show depth limit increases
+- [ ] Statistics show memory optimization flag
+
 ## Technical Details
 
 ### Constants
@@ -563,6 +962,19 @@ Order: **Up → Right → Down → Down-Right → Left → Up-Left**
 | Telemetry BG | (35, 35, 40, 220) | #232328dc | Semi-transparent |
 | Telemetry Border | (0, 200, 255, 100) | #00c8ff64 | Cyan tint |
 
+#### Research Module Colors
+| Element | RGB Value | Hex | Usage |
+|---------|-----------|-----|-------|
+| Research BFS | (0, 100, 255) | #0064FF | Blue - BFS phase |
+| Research DFS | (255, 140, 0) | #FF8C00 | Orange - DFS phase |
+| Mode Research | (255, 215, 0) | #FFD700 | Gold - Research Mode button |
+| DABPS Perimeter | (255, 140, 0) | #FF8C00 | Orange - The Net |
+| DABPS Adaptive | (0, 255, 255) | #00FFFF | Cyan - The Scout |
+| KWS Beam | (100, 150, 255, 120) | #6496FF78 | Transparent Blue - Scan rays |
+| KWS Stop | (255, 255, 0) | #FFFF00 | Bright Yellow - Stopping points |
+| Stealth Path | (0, 200, 255) | #00C8FF | Cyan - Current path stack |
+| Stealth Head | (255, 50, 50) | #FF3232 | Red - Current head node |
+
 ## Screenshots
 
 ### Main Interface (Professional Dark Theme)
@@ -584,6 +996,7 @@ Order: **Up → Right → Down → Down-Right → Left → Up-Left**
 │                                         │ ┌─────┬─────┐       │ │
 │                                         │ │↺Rst│🎲Rnd│       │ │
 │                                         │ └─────┴─────┘       │ │
+│                                         │ [🔬 Research Mode]   │ │
 │                                         │ Speed: [━━━●━━] 50ms│ │
 │                                         │                       │ │
 │                                         │ ╔═══════════════════╗ │
@@ -803,7 +1216,7 @@ class MyNewSolver(Solver):
 
 ## Credits
 
-Developed for AI/CS Researchers
+Developed for AI/CS Research
 - Author: Raja Muhammad Bilal Arshad
 - Version: 1.0.0
 - Created: 2026
