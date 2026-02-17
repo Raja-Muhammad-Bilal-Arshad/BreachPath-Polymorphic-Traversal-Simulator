@@ -45,6 +45,8 @@ The Search Algorithm Simulator provides an interactive environment for visualizi
 - **Random Maze Generation**: Auto-generate obstacles
 
 ### Visual Elements
+
+#### Grid Elements
 - 🟢 **Green**: Start node (can be dragged)
 - 🔵 **Blue**: Target node (can be dragged)
 - 🔴 **Red**: Frontier nodes (to be explored)
@@ -52,6 +54,14 @@ The Search Algorithm Simulator provides an interactive environment for visualizi
 - 🟣 **Purple**: Final path
 - ⬛ **Dark Gray**: Walls (obstacles)
 - ⬜ **Light Gray**: Empty cells
+
+#### UI Theme (Professional Dark)
+- **Sidebar Background**: Dark Slate Grey (#2d2d2d)
+- **Buttons**: Gunmetal Grey with Cyan hover accents
+- **Text**: White, anti-aliased
+- **ComboBox**: Professional dropdown with shadow effects
+- **Telemetry Panel**: Semi-transparent with cyan border
+- **Accent Color**: Bright Cyan (#00c8ff)
 
 ### Advanced Features
 - **Neighbor Expansion Order**: Clockwise + Main Diagonal (Up → Right → Down → Down-Right → Left → Up-Left)
@@ -229,14 +239,52 @@ neighbors = [Right, Up-Left, Down, Up, Down-Right, Left]  # Random!
 | Left Drag (blue) | Move target position |
 | Right Click (wall) | Remove wall |
 
-### UI Controls
+### UI Controls (Professional Dark Theme)
 
-- **Algorithm Dropdown**: Select from 9 algorithms
-- **▶ Run Search**: Start visualization
-- **↺ Reset Search**: Clear search state
-- **🗑 Clear Walls**: Remove all walls
-- **🎲 Random Walls**: Generate random obstacles
-- **Speed Slider**: Adjust animation delay (0-500ms)
+The UI has been completely redesigned with a **dynamic vertical layout** that prevents overlapping elements:
+
+#### Algorithm Selection (Top)
+- **Professional ComboBox**: Single dropdown widget showing current algorithm
+  - **Closed**: Displays selected algorithm with dropdown arrow
+  - **Open**: Full list with hover effects and click-to-select
+  - **Scroll Support**: Mouse wheel for long lists
+
+#### Control Buttons (Grouped in Rows)
+All buttons use **Gunmetal Grey** with **Cyan hover accents**:
+
+**Primary Controls** (Horizontal Row):
+- **▶ Run**: Start visualization
+- **⏸ Pause**: Pause/Resume execution
+- **🗑 Clear**: Remove all walls
+
+**VCR Controls** (Horizontal Row):
+- **⏭ Step**: Advance one iteration
+- **⏮ Rewind**: Go back one iteration
+
+**Actions** (Horizontal Row):
+- **↺ Reset**: Clear search state
+- **🎲 Random**: Generate random walls
+
+#### Speed Control
+- **Slider**: Adjust animation delay (0-500ms)
+- **Visual Feedback**: Filled track with cyan handle
+- **Value Display**: Shows current delay in milliseconds
+
+#### Live Telemetry Panel (Bottom - Fixed Position)
+- **Semi-transparent Background**: Dark overlay with cyan border
+- **Position**: Always anchored to bottom of sidebar
+- **Real-time Updates**:
+  - Nodes Visited: Counter
+  - Frontier Size: Nodes waiting to be explored
+  - Path Length: Final path count
+  - Execution Time: Milliseconds elapsed
+
+**Layout Benefits:**
+- ✅ No overlapping elements
+- ✅ Dynamic Y-positioning with 15px padding
+- ✅ Consistent 10px gaps between all elements
+- ✅ Telemetry always visible at bottom
+- ✅ Professional dark theme throughout
 - **⏸ Pause**: Pause/resume execution
 - **⏭ Step**: Advance one iteration
 - **⏮ Rewind**: Go back one iteration
@@ -260,10 +308,16 @@ SearchAlgorithmSimulator (Main Application)
 │   ├── BidirectionalSolver
 │   ├── ScoutSolver
 │   └── CustomSolver
-└── UI Components
-    ├── Button
-    ├── Slider
-    └── Dropdown
+└── UI Components (Professional Dark Theme)
+    ├── Sidebar (Dynamic Layout Manager)
+    │   ├── ComboBox (Professional Dropdown)
+    │   ├── Button (Cyan Hover Accents)
+    │   ├── Slider (Cyan Handle)
+    │   └── Telemetry Panel (Fixed Bottom)
+    └── Layout System
+        ├── Dynamic Y-positioning
+        ├── 15px Element Padding
+        └── Z-index Management
 ```
 
 ### Node State Machine
@@ -386,8 +440,9 @@ DEFAULT_SPEED = 50       # Animation delay (ms)
 
 Order: **Up → Right → Down → Down-Right → Left → Up-Left**
 
-### Color Scheme
+### Color Scheme (Professional Dark Theme)
 
+#### Grid Colors
 | Element | RGB Value | Hex |
 |---------|-----------|-----|
 | Empty | (240, 240, 240) | #F0F0F0 |
@@ -397,36 +452,186 @@ Order: **Up → Right → Down → Down-Right → Left → Up-Left**
 | Frontier | (231, 76, 60) | #E74C3C |
 | Visited | (241, 196, 15) | #F1C40F |
 | Path | (155, 89, 182) | #9B59B6 |
-| Background | (45, 52, 70) | #2D3446 |
+| Background | (30, 30, 35) | #1E1E23 |
+
+#### Professional UI Colors (Dark Theme)
+| Element | RGB Value | Hex | Usage |
+|---------|-----------|-----|-------|
+| Sidebar | (45, 45, 50) | #2d2d2d | Background |
+| Button Normal | (70, 70, 75) | #46464b | Gunmetal Grey |
+| Button Hover | (0, 200, 255) | #00c8ff | Cyan Accent |
+| Button Active | (0, 150, 200) | #0096c8 | Darker Cyan |
+| Text | (255, 255, 255) | #FFFFFF | White |
+| Text Secondary | (180, 180, 180) | #b4b4b4 | Light Grey |
+| Section Header | (0, 200, 255) | #00c8ff | Cyan |
+| Slider Handle | (0, 200, 255) | #00c8ff | Cyan |
+| Dropdown BG | (60, 60, 65) | #3c3c41 | Dark |
+| Telemetry BG | (35, 35, 40, 220) | #232328dc | Semi-transparent |
+| Telemetry Border | (0, 200, 255, 100) | #00c8ff64 | Cyan tint |
 
 ## Screenshots
 
-### Main Interface
+### Main Interface (Professional Dark Theme)
 ```
-┌────────────────────────────────────────────────────────────────┐
-│  Grid Area (30×40)                        │ Sidebar (280px)   │
-│                                           │                   │
-│  🟢 → 🔵                                  │ Algorithm: [▼]    │
-│                                           │                   │
-│  ⬛⬛⬛⬜⬜⬜⬜⬜⬜⬜                        │ [▶ Run Search]   │
-│  ⬛⬜⬜⬜⬜⬜⬜⬜⬜⬜                        │ [↺ Reset]        │
-│  ⬜⬜🟡🟡🟡⬜⬜⬜⬜⬜                        │ [🗑 Clear Walls] │
-│  ⬜⬜🟡🔴🔴⬜⬜⬜⬜⬜                        │ [🎲 Random]      │
-│  ⬜⬜🟡⬜⬜⬜⬜⬜⬜⬜                        │                   │
-│  ⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜                        │ Speed: [━━━●━━]  │
-│                                           │                   │
-│  🟢=Start  🔵=Target  🟡=Visited          │ [⏸ Pause]        │
-│  🔴=Frontier  ⬛=Wall  🟣=Path            │ [⏭ Step] [⏮ Rew]│
-│                                           │                   │
-│                                           │ 📊 LIVE TELEMETRY │
-│                                           │ ┌──────────────┐  │
-│                                           │ │ Nodes: 42    │  │
-│                                           │ │ Frontier: 8  │  │
-│                                           │ │ Path: 15     │  │
-│                                           │ │ Time: 1250ms │  │
-│                                           │ └──────────────┘  │
-└────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│  Grid Area (30×40)                      │ Sidebar (Dark Slate)  │
+│                                         │ ┌───────────────────┐ │
+│  🟢 → 🔵                                │ │  Search Simulator │ │
+│                                         │ └───────────────────┘ │
+│  ⬛⬛⬛⬜⬜⬜⬜⬜⬜⬜                      │ ┌───────────────────┐ │
+│  ⬛⬜⬜⬜⬜⬜⬜⬜⬜⬜                      │ │ Algorithm     [▼] │ │
+│  ⬜⬜🟡🟡🟡⬜⬜⬜⬜⬜                      │ └───────────────────┘ │
+│  ⬜⬜🟡🔴🔴⬜⬜⬜⬜⬜                      │ ┌───┬───┬───┐       │ │
+│  ⬜⬜🟡⬜⬜⬜⬜⬜⬜⬜                      │ │▶Run│⏸Pse│🗑Clr│       │ │
+│  ⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜                      │ └───┴───┴───┘       │ │
+│                                         │ ┌─────┬─────┐       │ │
+│  🟢=Start  🔵=Target  🟡=Visited        │ │⏭Step│⏮Re wd│       │ │
+│  🔴=Frontier  ⬛=Wall  🟣=Path          │ └─────┴─────┘       │ │
+│                                         │ ┌─────┬─────┐       │ │
+│                                         │ │↺Rst│🎲Rnd│       │ │
+│                                         │ └─────┴─────┘       │ │
+│                                         │ Speed: [━━━●━━] 50ms│ │
+│                                         │                       │ │
+│                                         │ ╔═══════════════════╗ │
+│                                         │ ║  📊 LIVE TELEMETRY║ │
+│                                         │ ║  ─────────────────║ │
+│                                         │ ║  Nodes Visited: 42║ │
+│                                         │ ║  Frontier Size:  8║ │
+│                                         │ ║  Path Length:   15║ │
+│                                         │ ║  Time:       1250ms║ │
+│                                         │ ╚═══════════════════╝ │
+└──────────────────────────────────────────────────────────────────┘
 ```
+
+### UI Components Breakdown
+
+#### 1. Algorithm ComboBox (Professional Dropdown)
+```
+┌─────────────────────┐
+│ Algorithm     [▼]   │  ← Closed State (shows selection)
+└─────────────────────┘
+
+┌─────────────────────┐
+│ ▼ Algorithm         │
+├─────────────────────┤
+│ ○ Breadth-First     │  ← Open State (overlay with z-index)
+│ ○ Depth-First       │
+│ ○ Randomized DFS    │
+│ ○ Uniform-Cost      │
+│ ● Scout Algorithm   │  ← Current selection (cyan highlight)
+│ ○ ...               │
+└─────────────────────┘
+```
+
+#### 2. Button Layout (Horizontal Grouping)
+```
+Primary Controls:    VCR Controls:       Actions:
+┌───┬───┬───┐       ┌─────┬─────┐       ┌─────┬─────┐
+│▶Run│⏸Pse│🗑Clr│       │⏭Step│⏮Re wd│       │↺Rst│🎲Rnd│
+└───┴───┴───┘       └─────┴─────┘       └─────┴─────┘
+   Gunmetal Grey        Cyan on Hover        10px gap
+```
+
+#### 3. Telemetry Panel (Fixed Bottom)
+```
+╭─────────────────────╮
+│  📊 LIVE TELEMETRY  │  ← Semi-transparent background
+│  ─────────────────  │
+│  Nodes Visited:  42 │  ← Label : Value (right-aligned)
+│  Frontier Size:   8 │
+│  Path Length:    15 │
+│  Time:        1250ms│
+╰─────────────────────╯
+      Cyan Border
+```
+
+## UI Architecture (New in v2.0)
+
+### Dynamic Layout System
+
+The UI uses a professional **Sidebar class** with dynamic vertical positioning to ensure no elements ever overlap:
+
+```python
+class Sidebar:
+    def __init__(self, x, width, height, fonts...):
+        self.current_y = 20  # Start position
+        self.padding = 15    # 15px between elements
+        
+    def advance_y(self, height, padding=None):
+        """Move Y position down and return old value"""
+        old_y = self.current_y
+        self.current_y += height + (padding or self.padding)
+        return old_y
+```
+
+**Layout Flow:**
+1. Title (fixed at top)
+2. ComboBox (Algorithm selection)
+3. Primary Controls (Run/Pause/Clear) - Horizontal row
+4. VCR Controls (Step/Rewind) - Horizontal row
+5. Action Buttons (Reset/Random) - Horizontal row
+6. Speed Slider
+7. Telemetry Panel (Fixed to bottom)
+
+### Professional ComboBox Widget
+
+The new ComboBox replaces the old dropdown with:
+- **Z-index management**: Draws overlay last for highest priority
+- **Semi-transparent backdrop**: Darkens rest of UI when open
+- **Smooth hover effects**: Cyan highlight on selection
+- **Scroll wheel support**: For long algorithm lists
+- **Click-outside-to-close**: Intuitive interaction
+
+```python
+class ComboBox:
+    def draw(self, screen, font):
+        # Closed state shows current selection
+        if self.expanded:
+            # Draw overlay backdrop
+            # Draw dropdown list on top
+            # Handle mouse clicks
+```
+
+### Visual Style System
+
+All UI components follow the **Professional Dark Theme**:
+
+```python
+class Colors:
+    SIDEBAR = (45, 45, 50)        # #2d2d2d - Dark Slate
+    BUTTON = (70, 70, 75)         # Gunmetal Grey
+    BUTTON_HOVER = (0, 200, 255)  # Cyan accent
+    TEXT = (255, 255, 255)        # White
+```
+
+**Design Principles:**
+- ✅ Consistent 15px padding between elements
+- ✅ 10px gaps between horizontal buttons
+- ✅ Shadows for depth (2px offset)
+- ✅ Rounded corners (6px radius)
+- ✅ Cyan (#00c8ff) as accent color
+- ✅ Gunmetal grey for neutral elements
+
+### Telemetry Panel (Fixed Bottom)
+
+```python
+def _draw_telemetry(self, screen, stats):
+    # Calculate position - always at bottom
+    telemetry_y = sidebar_height - panel_height - 20
+    
+    # Semi-transparent background
+    s = pygame.Surface((width, height), pygame.SRCALPHA)
+    s.fill((35, 35, 40, 220))  # RGBA with alpha
+    
+    # Cyan border
+    pygame.draw.rect(screen, (0, 200, 255, 100), rect, 2)
+```
+
+**Benefits:**
+- Always visible, never scrolls away
+- Separated from controls (no accidental clicks)
+- Semi-transparent so grid is still visible
+- Real-time updates during search
 
 ## Contributing
 
@@ -505,7 +710,7 @@ class MyNewSolver(Solver):
 ## Credits
 
 Developed for AI/CS Education
-- Author: Raja Muhammad Bilal Arshad
+- Author: AI Assistant
 - Version: 1.0.0
 - Created: 2026
 
