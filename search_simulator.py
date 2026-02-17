@@ -1745,11 +1745,13 @@ class Sidebar:
     
     def __init__(self, x: int, width: int, height: int, 
                  font: pygame.font.Font, title_font: pygame.font.Font, 
-                 small_font: pygame.font.Font) -> None:
+                 small_font: pygame.font.Font,
+                 toggle_fullscreen_callback: Optional[callable] = None) -> None:
         self.rect = pygame.Rect(x, 0, width, height)
         self.font = font
         self.title_font = title_font
         self.small_font = small_font
+        self.toggle_fullscreen_callback = toggle_fullscreen_callback
         
         # Layout parameters
         self.padding = 15
@@ -1759,14 +1761,16 @@ class Sidebar:
         self.small_button_width = (self.button_width - 10) // 2
         self.combobox_height = 40
         self.slider_height = 30
+        self.header_height = 50
         
         # Current Y position tracker (dynamic layout)
-        self.current_y = 20
+        self.current_y = self.header_height + 10  # Start below header
         
         # UI Components
         self.combobox: Optional[ComboBox] = None
         self.buttons: List[Button] = []
         self.slider: Optional[Slider] = None
+        self.fullscreen_button = None
         
         # Control button references (for easy access)
         self.run_button: Optional[Button] = None
@@ -1906,8 +1910,47 @@ class Sidebar:
         
         return self.telemetry_y
     
-    def draw(self, screen: pygame.Surface, telemetry_stats: Dict[str, any]) -> None:
+    def _draw_header(self, screen: pygame.Surface) -> None:
+        """Draw the sleek header bar at the top of sidebar."""
+        # Header background (slightly darker)
+        header_rect = pygame.Rect(self.rect.left, 0, self.rect.width, self.header_height)
+        pygame.draw.rect(screen, (35, 35, 40), header_rect)
+        
+        # Header border line
+        pygame.draw.line(screen, Colors.SIDEBAR_BORDER,
+                        (self.rect.left, self.header_height),
+                        (self.rect.right, self.header_height), 2)
+        
+        # Title
+        title = self.title_font.render("Search Simulator", True, Colors.TEXT)
+        screen.blit(title, (self.rect.left + self.padding, 15))
+        
+        # Fullscreen/Maximize button
+        if self.toggle_fullscreen_callback:
+            btn_size = 30
+            btn_x = self.rect.right - btn_size - 10
+            btn_y = 10
+            
+            # Button background
+            btn_rect = pygame.Rect(btn_x, btn_y, btn_size, btn_size)
+            pygame.draw.rect(screen, Colors.BUTTON, btn_rect, border_radius=4)
+            
+            # Icon (□ for windowed, ⛶ for fullscreen)
+            icon = "⛶" if self.fullscreen_button and hasattr(self, '_is_fs') and self._is_fs else "□"
+            icon_surface = self.small_font.render(icon, True, Colors.TEXT)
+            icon_rect = icon_surface.get_rect(center=btn_rect.center)
+            screen.blit(icon_surface, icon_rect)
+            
+            # Store button rect for click detection
+            if self.fullscreen_button is None:
+                self.fullscreen_button = {'rect': btn_rect, 'callback': self.toggle_fullscreen_callback}
+            else:
+                self.fullscreen_button['rect'] = btn_rect
+    
+    def draw(self, screen: pygame.Surface, telemetry_stats: Dict[str, any], is_fullscreen: bool = False) -> None:
         """Draw the entire sidebar."""
+        self._is_fs = is_fullscreen
+        
         # Draw sidebar background
         pygame.draw.rect(screen, Colors.SIDEBAR, self.rect)
         
@@ -1916,9 +1959,8 @@ class Sidebar:
                         (self.rect.left, 0), 
                         (self.rect.left, self.rect.height), 2)
         
-        # Draw title
-        title = self.title_font.render("Search Simulator", True, Colors.TEXT)
-        screen.blit(title, (self.rect.left + self.padding, 20))
+        # Draw header bar
+        self._draw_header(screen)
         
         # Draw ComboBox (closed state)
         if self.combobox:
@@ -1989,7 +2031,14 @@ class Sidebar:
     
     def handle_event(self, event: pygame.event.Event) -> bool:
         """Handle all sidebar events. Returns True if event was handled."""
-        # Handle ComboBox first (highest priority when expanded)
+        # Handle fullscreen button first
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.fullscreen_button and self.fullscreen_button['rect'].collidepoint(event.pos):
+                if self.fullscreen_button['callback']:
+                    self.fullscreen_button['callback']()
+                return True
+        
+        # Handle ComboBox (highest priority when expanded)
         if self.combobox:
             if self.combobox.handle_event(event):
                 return True
@@ -2046,17 +2095,37 @@ class SearchAlgorithmSimulator:
     def __init__(self) -> None:
         """Initialize the application."""
         try:
+            global _current_window_width, _current_window_height, _current_sidebar_x
+            
             pygame.init()
             pygame.display.set_caption("Search Algorithm Simulator")
             
-            self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+            # Window state
+            self.is_fullscreen = False
+            self.is_maximized = False
+            self.windowed_size = (DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
+            
+            # Create initial window
+            self.screen = pygame.display.set_mode(
+                (DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT),
+                pygame.RESIZABLE
+            )
+            
             self.clock = pygame.time.Clock()
             self.font = pygame.font.Font(None, 28)
             self.title_font = pygame.font.Font(None, 36)
             self.small_font = pygame.font.Font(None, 24)
             
-            # Initialize grid
-            self.grid = Grid(GRID_ROWS, GRID_COLS)
+            # Calculate initial grid dimensions based on window size
+            self._calculate_grid_dimensions()
+            
+            # Initialize grid with dynamic dimensions
+            self.grid = Grid(
+                self.grid_rows, self.grid_cols,
+                node_size=self.node_size,
+                sidebar_x=self.sidebar_x,
+                window_height=self.window_height
+            )
             
             # Initialize solvers
             self.solvers: List[Solver] = [
@@ -2103,8 +2172,9 @@ class SearchAlgorithmSimulator:
             
             # Create professional Sidebar
             self.sidebar = Sidebar(
-                SIDEBAR_X, SIDEBAR_WIDTH, WINDOW_HEIGHT,
-                self.font, self.title_font, self.small_font
+                self.sidebar_x, SIDEBAR_WIDTH, self.window_height,
+                self.font, self.title_font, self.small_font,
+                toggle_fullscreen_callback=self._toggle_fullscreen
             )
             self._create_ui()
             
@@ -2112,14 +2182,109 @@ class SearchAlgorithmSimulator:
             print(f"Error initializing application: {e}")
             raise
     
+    def _calculate_grid_dimensions(self) -> None:
+        """Calculate grid dimensions based on current window size."""
+        global _current_window_width, _current_window_height, _current_sidebar_x, _current_node_size
+        
+        self.window_width = self.screen.get_width()
+        self.window_height = self.screen.get_height()
+        _current_window_width = self.window_width
+        _current_window_height = self.window_height
+        
+        # Calculate sidebar position
+        self.sidebar_x = self.window_width - SIDEBAR_WIDTH
+        _current_sidebar_x = self.sidebar_x
+        
+        # Calculate available space for grid
+        available_width = self.sidebar_x - GRID_OFFSET_X - 20
+        available_height = self.window_height - GRID_OFFSET_Y - 20
+        
+        # Calculate optimal node size
+        # Try to fit roughly 40 columns and 30 rows
+        node_size_w = available_width // DEFAULT_GRID_COLS
+        node_size_h = available_height // DEFAULT_GRID_ROWS
+        self.node_size = max(MIN_NODE_SIZE, min(MAX_NODE_SIZE, min(node_size_w, node_size_h)))
+        _current_node_size = self.node_size
+        
+        # Calculate actual grid dimensions
+        self.grid_cols = available_width // (self.node_size + GRID_GAP)
+        self.grid_rows = available_height // (self.node_size + GRID_GAP)
+        
+        # Ensure minimum grid size
+        self.grid_cols = max(10, self.grid_cols)
+        self.grid_rows = max(10, self.grid_rows)
+    
+    def _toggle_fullscreen(self) -> None:
+        """Toggle fullscreen mode."""
+        global _is_fullscreen
+        
+        self.is_fullscreen = not self.is_fullscreen
+        _is_fullscreen = self.is_fullscreen
+        
+        if self.is_fullscreen:
+            # Save current windowed size
+            if not self.is_maximized:
+                self.windowed_size = (self.window_width, self.window_height)
+            
+            # Get display info for fullscreen
+            display_info = pygame.display.Info()
+            self.screen = pygame.display.set_mode(
+                (display_info.current_w, display_info.current_h),
+                pygame.FULLSCREEN | pygame.RESIZABLE
+            )
+        else:
+            # Restore windowed mode
+            self.screen = pygame.display.set_mode(
+                self.windowed_size,
+                pygame.RESIZABLE
+            )
+        
+        # Recalculate everything
+        self._on_window_resize()
+    
+    def _on_window_resize(self) -> None:
+        """Handle window resize event."""
+        global WINDOW_WIDTH, WINDOW_HEIGHT, SIDEBAR_X, NODE_SIZE, GRID_ROWS, GRID_COLS
+        
+        # Stop any running search
+        was_running = self.is_running
+        self._on_reset()
+        
+        # Recalculate grid dimensions
+        self._calculate_grid_dimensions()
+        
+        # Update global constants for backward compatibility
+        WINDOW_WIDTH = self.window_width
+        WINDOW_HEIGHT = self.window_height
+        SIDEBAR_X = self.sidebar_x
+        NODE_SIZE = self.node_size
+        GRID_ROWS = self.grid_rows
+        GRID_COLS = self.grid_cols
+        
+        # Create new grid with new dimensions
+        self.grid = Grid(
+            self.grid_rows, self.grid_cols,
+            node_size=self.node_size,
+            sidebar_x=self.sidebar_x,
+            window_height=self.window_height
+        )
+        
+        # Recreate sidebar with new dimensions
+        self.sidebar = Sidebar(
+            self.sidebar_x, SIDEBAR_WIDTH, self.window_height,
+            self.font, self.title_font, self.small_font,
+            toggle_fullscreen_callback=self._toggle_fullscreen
+        )
+        self._create_ui()
+        
+        print(f"Window resized: {self.window_width}x{self.window_height}")
+        print(f"Grid: {self.grid_cols}x{self.grid_rows}, Node size: {self.node_size}")
+    
     def _create_ui(self) -> None:
         """Create UI using the professional Sidebar with dynamic layout."""
         try:
-            # Reset sidebar layout
+            # Reset sidebar layout - starts below header automatically
             self.sidebar.reset_y()
-            
-            # Add space for title
-            self.sidebar.advance_y(50, 0)
             
             # Create Algorithm ComboBox
             solver_names = [s.name for s in self.solvers]
@@ -2424,7 +2589,7 @@ class SearchAlgorithmSimulator:
         """Draw the sidebar using the professional Sidebar class."""
         try:
             # Use the Sidebar class to draw everything
-            self.sidebar.draw(self.screen, self.search_stats)
+            self.sidebar.draw(self.screen, self.search_stats, self.is_fullscreen)
             
         except Exception as e:
             print(f"Error drawing sidebar: {e}")
@@ -2462,7 +2627,14 @@ class SearchAlgorithmSimulator:
                             
                             elif event.type == pygame.KEYDOWN:
                                 if event.key == pygame.K_ESCAPE:
-                                    running = False
+                                    # Exit fullscreen if active, otherwise quit
+                                    if self.is_fullscreen:
+                                        self._toggle_fullscreen()
+                                    else:
+                                        running = False
+                                elif event.key == pygame.K_F11:
+                                    # F11 also toggles fullscreen
+                                    self._toggle_fullscreen()
                                 elif event.key == pygame.K_SPACE:
                                     self._on_run()
                                 elif event.key == pygame.K_r:
@@ -2485,6 +2657,15 @@ class SearchAlgorithmSimulator:
                                     self.animation_delay = min(SPEED_MAX, self.animation_delay + 10)
                                     if self.sidebar.slider:
                                         self.sidebar.slider.value = self.animation_delay
+                            
+                            elif event.type == pygame.VIDEORESIZE:
+                                # Handle window resize
+                                if not self.is_fullscreen:
+                                    self.screen = pygame.display.set_mode(
+                                        (event.w, event.h),
+                                        pygame.RESIZABLE
+                                    )
+                                    self._on_window_resize()
                             
                             elif event.type == pygame.MOUSEBUTTONDOWN:
                                 # Check sidebar UI first
