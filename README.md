@@ -710,7 +710,7 @@ class MyNewSolver(Solver):
 ## Credits
 
 Developed for AI/CS Education
-- Author: AI Assistant
+- Author: Raja Muhammad Bilal Arshad
 - Version: 1.0.0
 - Created: 2026
 
