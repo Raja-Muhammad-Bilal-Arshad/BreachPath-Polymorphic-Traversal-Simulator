@@ -1173,19 +1173,31 @@ class MyNewSolver(Solver):
 - Document all methods
 - Add unit tests
 
-## Performance Comparison
+## 🛡️ Comparative Analysis of Search Strategies
 
-| Algorithm | Time (avg) | Path Quality | Memory |
-|-----------|------------|--------------|---------|
-| BFS | Medium | Optimal | High |
-| DFS | Fast | Suboptimal | Low |
-| Randomized DFS | Variable | Variable | Low |
-| UCS | Slow | Optimal | High |
-| DLS | Fast* | May Fail | Low |
-| IDDFS | Medium | Optimal | Low |
-| Bidirectional | Fast | Optimal | Medium |
-| Scout | Medium | Good | Medium |
+The following table contrasts standard uninformed search algorithms with the **Novel Westra Research Algorithms** implemented in this simulator.
 
+| **Algorithm** | **Time Complexity** | **Space Complexity** | **Complete?** | **Optimal?** | **Westra Tactical Use Case** |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Breadth-First Search (BFS)** | $O(b^d)$ | $O(b^d)$ | Yes | Yes | **Standard Mapping:** Best for guarantees in small, unknown areas. |
+| **Depth-First Search (DFS)** | $O(b^m)$ | $O(bm)$ | No | No | **Deep Penetration:** Good for finding *any* path in massive mazes where memory is tight. |
+| **Uniform-Cost Search (UCS)** | $O(b^{1+ \lfloor C^*/\epsilon \rfloor})$ | $O(b^{1+ \lfloor C^*/\epsilon \rfloor})$ | Yes | Yes | **Terrain Analysis:** Essential when "mud" or "hills" (weights) are involved. |
+| **Depth-Limited Search (DLS)** | $O(b^l)$ | $O(bl)$ | No | No | **Safety Perimeter:** Used when you only care about targets within $l$ clicks. |
+| **Iterative Deepening (IDDFS)** | $O(b^d)$ | $O(bd)$ | Yes | Yes | **The Gold Standard:** Best balance of speed and memory for standard CPUs. |
+| **Bidirectional Search** | $O(b^{d/2})$ | $O(b^{d/2})$ | Yes | Yes | **Pincer Movement:** The fastest standard algorithm, but requires knowing the Target location. |
+| **Randomized DFS (Chaos)** | $O(b^m)$ | $O(bm)$ | No | No | **Evasion:** Unpredictable pathing useful for confusing adversarial AI. |
+| **Scout Algorithm (Hybrid)** | Variable | Variable | Yes | No | **Reconnaissance:** Scans the perimeter (BFS) before diving deep (DFS). |
+| **Westra DABPS (Research)** | **$O(b_{eff}^d)$** | **Adaptive** | Yes | Near | **Intelligent Switch:** Optimizes for "Corridors" vs "Rooms" dynamically. |
+| **Kinetic Wavefront (KWS)** | **$O(k)$** | **$O(k)$** | Yes | No | **Hyperspeed:** The fastest possible traversal for open spaces (sliding). |
+| **Westra Stealth Search** | $O(b^d)$ | **$O(d)$** | Yes | Yes | **Ghost Protocol:** Minimum theoretical memory usage. Zero footprint. |
+| **Random Walk (Baseline)** | $O(\infty)$ | $O(1)$ | No | No | **Desperation:** The baseline "blind" movement. Used as a control variable. |
+
+---
+* **Legend:**
+  * $b$: Branching factor
+  * $d$: Depth of shallowest goal
+  * $m$: Maximum path length
+  * $k$: Number of corners (turns) in path
 *When target within limit
 
 ## Troubleshooting
