@@ -1,10 +1,13 @@
-# Search Algorithm Simulator
+# Search Algorithm Simulator v2.0
 
-A professional, interactive Pygame-based visualization tool for exploring and comparing various search algorithms on a 2D grid. Built for AI/CS education and algorithm analysis.
+A professional, interactive Pygame-based visualization tool for exploring and comparing various search algorithms on a 2D grid. Built for AI/CS researchers and algorithm analysis.
+
+**🆕 New in v2.0**: Fullscreen support, dynamic window resizing, and completely refactored UI with professional dark theme!
 
 ![Python Version](https://img.shields.io/badge/python-3.13+-blue.svg)
 ![Pygame Version](https://img.shields.io/badge/pygame-2.6+-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-yellow.svg)
+![Version](https://img.shields.io/badge/version-2.0.0-brightgreen.svg)
 
 ## Table of Contents
 
@@ -33,6 +36,9 @@ The Search Algorithm Simulator provides an interactive environment for visualizi
 - Random maze generation
 - Interactive wall placement
 - Custom hybrid algorithms
+- **Fullscreen & Maximize mode** (NEW v2.0)
+- **Dynamic window resizing with auto-scaling grid** (NEW v2.0)
+- **Professional dark UI theme with header bar** (NEW v2.0)
 
 ## Features
 
@@ -227,7 +233,9 @@ neighbors = [Right, Up-Left, Down, Up, Down-Right, Left]  # Random!
 | `B` | Rewind (VCR) |
 | `↑` | Increase speed |
 | `↓` | Decrease speed |
-| `ESC` | Exit |
+| `ESC` | Exit fullscreen / Quit (if windowed) |
+| `F11` | Toggle fullscreen mode |
+| `□` (Button) | Maximize/Restore window |
 
 ### Mouse Controls
 
@@ -265,6 +273,51 @@ All buttons use **Gunmetal Grey** with **Cyan hover accents**:
 - **↺ Reset**: Clear search state
 - **🎲 Random**: Generate random walls
 
+---
+
+## Fullscreen & Window Management ⭐ NEW
+
+### Dynamic Window Resizing
+
+The application now supports **fullscreen mode** and **dynamic window resizing**:
+
+#### Fullscreen Features
+- **Maximize Button**: Click the `□` / `⛶` button in the sidebar header to toggle fullscreen
+- **F11 Key**: Alternative keyboard shortcut to toggle fullscreen
+- **ESC Key**: Exit fullscreen mode (or quit if already windowed)
+- **Smooth Transitions**: Seamless switch between windowed and fullscreen modes
+
+#### Dynamic Grid Scaling
+When the window is resized or maximized:
+
+1. **Auto-Detection**: New screen dimensions are automatically detected
+2. **Grid Recalculation**: 
+   - Grid columns and rows are recalculated based on available space
+   - Node size is optimized (15px - 40px range) to maximize grid coverage
+   - Grid expands to fill available space minus sidebar
+3. **State Preservation**:
+   - Current search is paused and reset
+   - Start and target positions are reinitialized
+   - Walls are cleared (re-mapping complex walls to new grid is not supported)
+4. **UI Adaptation**: Sidebar and all UI elements resize to fit new dimensions
+
+#### Example Resolutions
+| Mode | Window Size | Grid Size | Node Size |
+|------|-------------|-----------|-----------|
+| Default | 1200x800 | 40x30 | 22px |
+| Maximized | 1920x1080 | ~70x45 | ~25px |
+| Fullscreen | Display native | Calculated | Optimized |
+
+**Note**: On window resize, the grid is recreated with new dimensions. This provides a fresh canvas while maintaining the professional layout and all functionality.
+
+### Resize Event Handling
+
+The application handles several window events:
+- **VIDEORESIZE**: User drags window corner to resize
+- **FULLSCREEN toggle**: Via button, F11 key, or maximize
+- **Minimize/Restore**: Window state changes
+- **Multi-monitor**: Works across different display configurations
+
 #### Speed Control
 - **Slider**: Adjust animation delay (0-500ms)
 - **Visual Feedback**: Filled track with cyan handle
@@ -285,9 +338,14 @@ All buttons use **Gunmetal Grey** with **Cyan hover accents**:
 - ✅ Consistent 10px gaps between all elements
 - ✅ Telemetry always visible at bottom
 - ✅ Professional dark theme throughout
-- **⏸ Pause**: Pause/resume execution
-- **⏭ Step**: Advance one iteration
-- **⏮ Rewind**: Go back one iteration
+- ✅ Fullscreen/maximize support
+- ✅ Dynamic window resizing
+
+#### Header Bar (Top of Sidebar)
+- **Sleek Dark Header**: Darker background bar at top of sidebar
+- **Application Title**: "Search Simulator" text
+- **Maximize/Fullscreen Button**: Toggle button (□ / ⛶) in top-right corner
+- **Visual Separation**: Border line separates header from controls
 
 ## Architecture
 
@@ -310,6 +368,7 @@ SearchAlgorithmSimulator (Main Application)
 │   └── CustomSolver
 └── UI Components (Professional Dark Theme)
     ├── Sidebar (Dynamic Layout Manager)
+    │   ├── Header Bar (Title + Maximize Button)
     │   ├── ComboBox (Professional Dropdown)
     │   ├── Button (Cyan Hover Accents)
     │   ├── Slider (Cyan Handle)
@@ -317,7 +376,27 @@ SearchAlgorithmSimulator (Main Application)
     └── Layout System
         ├── Dynamic Y-positioning
         ├── 15px Element Padding
-        └── Z-index Management
+        ├── Z-index Management
+        └── Window Resize Handling
+
+### Window & Display System
+
+```
+Window Management
+├── Fullscreen Toggle (_toggle_fullscreen)
+│   ├── F11 Key Binding
+│   ├── Maximize Button
+│   └── ESC to Exit
+├── Dynamic Grid Scaling (_on_window_resize)
+│   ├── Calculate new dimensions
+│   ├── Recalculate node size
+│   ├── Update grid rows/cols
+│   └── Recreate UI elements
+└── VIDEORESIZE Event Handler
+    ├── Update display surface
+    ├── Recalculate all positions
+    └── Refresh grid and UI
+```
 ```
 
 ### Node State Machine
@@ -399,6 +478,7 @@ The comprehensive test suite includes:
 
 ### Manual Testing Checklist
 
+#### Core Functionality
 - [ ] All 9 algorithms complete successfully
 - [ ] Start/target dragging works
 - [ ] Wall placement/removal works
@@ -408,6 +488,19 @@ The comprehensive test suite includes:
 - [ ] Pause/resume works
 - [ ] Telemetry updates in real-time
 - [ ] No crashes on edge cases
+
+#### Window Management & Fullscreen
+- [ ] Fullscreen toggle via F11 key works
+- [ ] Fullscreen toggle via maximize button works
+- [ ] ESC key exits fullscreen mode
+- [ ] Window can be resized by dragging corners
+- [ ] Grid scales properly on window resize
+- [ ] Grid is cleared on resize (expected behavior)
+- [ ] UI elements reposition correctly on resize
+- [ ] Telemetry panel stays anchored to bottom
+- [ ] Sidebar maintains proper width during resize
+- [ ] Application works on different screen resolutions
+- [ ] Multi-monitor setup handling works
 
 ## Technical Details
 
@@ -458,6 +551,7 @@ Order: **Up → Right → Down → Down-Right → Left → Up-Left**
 | Element | RGB Value | Hex | Usage |
 |---------|-----------|-----|-------|
 | Sidebar | (45, 45, 50) | #2d2d2d | Background |
+| Header Bar | (35, 35, 40) | #232328 | Top header |
 | Button Normal | (70, 70, 75) | #46464b | Gunmetal Grey |
 | Button Hover | (0, 200, 255) | #00c8ff | Cyan Accent |
 | Button Active | (0, 150, 200) | #0096c8 | Darker Cyan |
@@ -709,7 +803,7 @@ class MyNewSolver(Solver):
 
 ## Credits
 
-Developed for AI/CS Education
+Developed for AI/CS Researchers
 - Author: Raja Muhammad Bilal Arshad
 - Version: 1.0.0
 - Created: 2026
