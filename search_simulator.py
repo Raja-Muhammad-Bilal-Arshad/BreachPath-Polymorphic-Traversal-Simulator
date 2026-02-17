@@ -5,7 +5,7 @@ Search Algorithm Simulator - A Professional Pygame-based Grid Visualization Tool
 This application provides an interactive environment for visualizing and comparing
 various search algorithms including BFS, DFS, UCS, DLS, IDDFS, and Bidirectional Search.
 
-Author: AI Assistant
+Author: Raja Muhammad Bilal Arshad
 Version: 1.0.0
 """
 
@@ -23,7 +23,7 @@ import math
 # =============================================================================
 
 class Colors:
-    """Professional color palette for the application."""
+    """Professional dark theme color palette for the application."""
     # Grid Colors
     EMPTY = (240, 240, 240)        # Light Gray
     GRID_LINE = (200, 200, 200)    # Medium Gray
@@ -36,18 +36,39 @@ class Colors:
     VISITED = (241, 196, 15)       # Yellow
     PATH = (155, 89, 182)          # Purple
     
-    # UI Colors
-    BACKGROUND = (45, 52, 70)      # Dark Blue-Gray
-    SIDEBAR = (52, 61, 78)         # Slightly Lighter
-    BUTTON = (70, 80, 100)         # Button Background
-    BUTTON_HOVER = (90, 100, 120)  # Button Hover
-    BUTTON_ACTIVE = (100, 120, 140) # Button Active
-    TEXT = (236, 240, 241)         # White
-    TEXT_SECONDARY = (189, 195, 199) # Light Gray
+    # New Professional UI Colors - Dark Theme
+    BACKGROUND = (30, 30, 35)      # Dark background
+    SIDEBAR = (45, 45, 50)         # Dark Slate Grey (#2d2d2d)
+    SIDEBAR_BORDER = (60, 60, 65)  # Slightly lighter border
+    
+    # Buttons
+    BUTTON = (70, 70, 75)          # Gunmetal Grey
+    BUTTON_HOVER = (0, 200, 255)   # Bright Cyan accent
+    BUTTON_ACTIVE = (0, 150, 200)  # Darker Cyan when active
+    BUTTON_TEXT = (255, 255, 255)  # White text
+    BUTTON_TEXT_HOVER = (0, 0, 0)  # Black text on hover (for contrast)
+    
+    # General UI
+    TEXT = (255, 255, 255)         # White
+    TEXT_SECONDARY = (180, 180, 180) # Light Gray
+    TEXT_ACCENT = (0, 200, 255)    # Cyan accent text
+    
+    # Dropdown
+    DROPDOWN_BG = (60, 60, 65)     # Dropdown background
+    DROPDOWN_HOVER = (80, 80, 85)  # Dropdown hover
+    DROPDOWN_SELECTED = (0, 150, 200) # Selected item
     
     # Slider Colors
-    SLIDER_TRACK = (100, 100, 100)
-    SLIDER_HANDLE = (52, 152, 219)
+    SLIDER_TRACK = (80, 80, 85)
+    SLIDER_HANDLE = (0, 200, 255)  # Cyan handle
+    SLIDER_FILL = (0, 150, 200)    # Filled portion
+    
+    # Telemetry Panel
+    TELEMETRY_BG = (35, 35, 40, 220)  # Semi-transparent dark (with alpha)
+    TELEMETRY_BORDER = (0, 200, 255, 100)  # Cyan border
+    
+    # Section headers
+    SECTION_HEADER = (0, 200, 255) # Cyan
 
 
 class NodeState(Enum):
@@ -61,22 +82,41 @@ class NodeState(Enum):
     PATH = auto()
 
 
-# Window Configuration
-WINDOW_WIDTH = 1200
-WINDOW_HEIGHT = 800
+# Window Configuration (Default - will be dynamic)
+DEFAULT_WINDOW_WIDTH = 1200
+DEFAULT_WINDOW_HEIGHT = 800
+MIN_WINDOW_WIDTH = 800
+MIN_WINDOW_HEIGHT = 600
 FPS = 60
 
-# Grid Configuration
-GRID_ROWS = 30
-GRID_COLS = 40
+# Grid Configuration (Dynamic - recalculated on resize)
+DEFAULT_GRID_ROWS = 30
+DEFAULT_GRID_COLS = 40
 GRID_OFFSET_X = 20
-GRID_OFFSET_Y = 20
-NODE_SIZE = 22
+GRID_OFFSET_Y = 60  # Increased to accommodate header bar
+MIN_NODE_SIZE = 15
+MAX_NODE_SIZE = 40
 GRID_GAP = 1
 
 # Sidebar Configuration
 SIDEBAR_WIDTH = 280
-SIDEBAR_X = WINDOW_WIDTH - SIDEBAR_WIDTH
+SIDEBAR_MIN_WIDTH = 240
+SIDEBAR_MAX_WIDTH = 350
+
+# Global state for dynamic window
+_current_window_width = DEFAULT_WINDOW_WIDTH
+_current_window_height = DEFAULT_WINDOW_HEIGHT
+_current_sidebar_x = DEFAULT_WINDOW_WIDTH - SIDEBAR_WIDTH
+_current_node_size = 22
+_is_fullscreen = False
+
+# Keep backward compatibility
+WINDOW_WIDTH = _current_window_width
+WINDOW_HEIGHT = _current_window_height
+SIDEBAR_X = _current_sidebar_x
+NODE_SIZE = _current_node_size
+GRID_ROWS = DEFAULT_GRID_ROWS
+GRID_COLS = DEFAULT_GRID_COLS
 
 # Animation Speeds (delay in milliseconds)
 SPEED_MIN = 0      # Instant
@@ -163,16 +203,23 @@ class Grid:
     - Managing start and target positions
     """
     
-    def __init__(self, rows: int, cols: int) -> None:
+    def __init__(self, rows: int, cols: int, node_size: int = 22, 
+                 sidebar_x: int = 920, window_height: int = 800) -> None:
         """
         Initialize the grid with specified dimensions.
         
         Args:
             rows: Number of rows in the grid
             cols: Number of columns in the grid
+            node_size: Size of each node in pixels
+            sidebar_x: X position where sidebar starts
+            window_height: Current window height
         """
         self.rows = rows
         self.cols = cols
+        self.node_size = node_size
+        self.sidebar_x = sidebar_x
+        self.window_height = window_height
         self.grid: List[List[Node]] = []
         self.start_pos: Tuple[int, int] = (rows // 4, cols // 4)
         self.target_pos: Tuple[int, int] = (rows // 4, 3 * cols // 4)
@@ -448,13 +495,13 @@ class Grid:
             Tuple of (row, col) or None if outside grid
         """
         try:
-            if screen_x < GRID_OFFSET_X or screen_x >= SIDEBAR_X - 20:
+            if screen_x < GRID_OFFSET_X or screen_x >= self.sidebar_x - 20:
                 return None
-            if screen_y < GRID_OFFSET_Y or screen_y >= WINDOW_HEIGHT - 20:
+            if screen_y < GRID_OFFSET_Y or screen_y >= self.window_height - 20:
                 return None
             
-            col = (screen_x - GRID_OFFSET_X) // (NODE_SIZE + GRID_GAP)
-            row = (screen_y - GRID_OFFSET_Y) // (NODE_SIZE + GRID_GAP)
+            col = (screen_x - GRID_OFFSET_X) // (self.node_size + GRID_GAP)
+            row = (screen_y - GRID_OFFSET_Y) // (self.node_size + GRID_GAP)
             
             if 0 <= row < self.rows and 0 <= col < self.cols:
                 return (row, col)
@@ -474,17 +521,17 @@ class Grid:
             for row in range(self.rows):
                 for col in range(self.cols):
                     node = self.grid[row][col]
-                    x = GRID_OFFSET_X + col * (NODE_SIZE + GRID_GAP)
-                    y = GRID_OFFSET_Y + row * (NODE_SIZE + GRID_GAP)
+                    x = GRID_OFFSET_X + col * (self.node_size + GRID_GAP)
+                    y = GRID_OFFSET_Y + row * (self.node_size + GRID_GAP)
                     
                     # Draw node
                     color = node.get_color()
-                    pygame.draw.rect(screen, color, (x, y, NODE_SIZE, NODE_SIZE))
+                    pygame.draw.rect(screen, color, (x, y, self.node_size, self.node_size))
                     
                     # Draw border for empty cells to show grid
                     if node.state == NodeState.EMPTY:
                         pygame.draw.rect(screen, Colors.GRID_LINE, 
-                                       (x, y, NODE_SIZE, NODE_SIZE), 1)
+                                       (x, y, self.node_size, self.node_size), 1)
         except Exception as e:
             print(f"Error drawing grid: {e}")
 
@@ -1342,45 +1389,62 @@ class ScoutSolver(Solver):
 
 
 # =============================================================================
-# UI COMPONENTS
+# PROFESSIONAL UI COMPONENTS
 # =============================================================================
 
 class Button:
-    """Interactive button component for the sidebar."""
+    """Enhanced interactive button with professional styling."""
     
     def __init__(self, x: int, y: int, width: int, height: int, 
-                 text: str, callback, active: bool = False) -> None:
+                 text: str, callback, active: bool = False, 
+                 text_color: Tuple[int, int, int] = None) -> None:
         self.rect = pygame.Rect(x, y, width, height)
         self.text = text
         self.callback = callback
         self.active = active
         self.hovered = False
+        self.text_color = text_color or Colors.BUTTON_TEXT
+        self.padding = 10
     
     def draw(self, screen: pygame.Surface, font: pygame.font.Font) -> None:
-        """Draw the button on the screen."""
-        # Determine color based on state
+        """Draw the button with professional styling."""
+        # Determine colors based on state
         if self.active:
-            color = Colors.BUTTON_ACTIVE
+            bg_color = Colors.BUTTON_ACTIVE
+            border_color = Colors.BUTTON_HOVER
         elif self.hovered:
-            color = Colors.BUTTON_HOVER
+            bg_color = Colors.BUTTON_HOVER
+            border_color = Colors.TEXT
         else:
-            color = Colors.BUTTON
+            bg_color = Colors.BUTTON
+            border_color = Colors.SIDEBAR_BORDER
+        
+        # Draw shadow for depth
+        shadow_rect = self.rect.copy()
+        shadow_rect.move_ip(2, 2)
+        pygame.draw.rect(screen, (20, 20, 25), shadow_rect, border_radius=6)
         
         # Draw button background
-        pygame.draw.rect(screen, color, self.rect, border_radius=5)
-        pygame.draw.rect(screen, Colors.TEXT_SECONDARY, self.rect, 2, border_radius=5)
+        pygame.draw.rect(screen, bg_color, self.rect, border_radius=6)
+        
+        # Draw border (thicker when hovered)
+        border_width = 2 if self.hovered else 1
+        pygame.draw.rect(screen, border_color, self.rect, border_width, border_radius=6)
         
         # Draw text
-        text_surface = font.render(self.text, True, Colors.TEXT)
+        text_color = Colors.BUTTON_TEXT_HOVER if self.hovered else self.text_color
+        text_surface = font.render(self.text, True, text_color)
         text_rect = text_surface.get_rect(center=self.rect.center)
         screen.blit(text_surface, text_rect)
     
     def handle_event(self, event: pygame.event.Event) -> bool:
         """Handle mouse events for the button."""
         if event.type == pygame.MOUSEMOTION:
+            was_hovered = self.hovered
             self.hovered = self.rect.collidepoint(event.pos)
+            return was_hovered != self.hovered
         
-        if event.type == pygame.MOUSEBUTTONDOWN:
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.rect.collidepoint(event.pos):
                 if self.callback:
                     self.callback()
@@ -1389,44 +1453,272 @@ class Button:
         return False
 
 
-class Slider:
-    """Interactive slider component for speed control."""
+class ComboBox:
+    """Professional ComboBox dropdown widget with proper z-index handling."""
     
     def __init__(self, x: int, y: int, width: int, height: int,
-                 min_val: int, max_val: int, initial: int, callback) -> None:
+                 options: List[str], callback, label: str = "") -> None:
+        self.rect = pygame.Rect(x, y, width, height)
+        self.options = options
+        self.selected = 0
+        self.callback = callback
+        self.label = label
+        self.expanded = False
+        self.hovered = False
+        self.option_height = height
+        self.scroll_offset = 0
+        self.max_visible_options = 8
+        
+        # Create option rectangles (calculated on demand)
+        self.option_rects: List[pygame.Rect] = []
+        
+    def draw(self, screen: pygame.Surface, font: pygame.font.Font, 
+             title_font: pygame.font.Font = None) -> None:
+        """Draw the ComboBox with professional styling."""
+        # Draw label if provided
+        if self.label and title_font:
+            label_surface = title_font.render(self.label, True, Colors.SECTION_HEADER)
+            screen.blit(label_surface, (self.rect.left, self.rect.top - 25))
+        
+        # Draw main button (closed state)
+        if self.expanded:
+            bg_color = Colors.DROPDOWN_SELECTED
+            border_color = Colors.BUTTON_HOVER
+        elif self.hovered:
+            bg_color = Colors.DROPDOWN_HOVER
+            border_color = Colors.BUTTON_HOVER
+        else:
+            bg_color = Colors.DROPDOWN_BG
+            border_color = Colors.SIDEBAR_BORDER
+        
+        # Draw shadow
+        shadow_rect = self.rect.copy()
+        shadow_rect.move_ip(2, 2)
+        pygame.draw.rect(screen, (20, 20, 25), shadow_rect, border_radius=6)
+        
+        # Draw main box
+        pygame.draw.rect(screen, bg_color, self.rect, border_radius=6)
+        pygame.draw.rect(screen, border_color, self.rect, 2, border_radius=6)
+        
+        # Draw selected option text (truncate if too long)
+        selected_text = self.options[self.selected]
+        max_text_width = self.rect.width - 50  # Leave room for arrow
+        text_surface = font.render(selected_text, True, Colors.TEXT)
+        
+        # Truncate if necessary
+        if text_surface.get_width() > max_text_width:
+            while text_surface.get_width() > max_text_width - 15:
+                selected_text = selected_text[:-1]
+                text_surface = font.render(selected_text + "...", True, Colors.TEXT)
+        
+        text_rect = text_surface.get_rect(midleft=(self.rect.left + 12, self.rect.centery))
+        screen.blit(text_surface, text_rect)
+        
+        # Draw arrow with animation effect
+        arrow_color = Colors.BUTTON_HOVER if self.hovered or self.expanded else Colors.TEXT_SECONDARY
+        arrow = "▼" if not self.expanded else "▲"
+        arrow_surface = font.render(arrow, True, arrow_color)
+        arrow_rect = arrow_surface.get_rect(midright=(self.rect.right - 12, self.rect.centery))
+        screen.blit(arrow_surface, arrow_rect)
+    
+    def draw_dropdown(self, screen: pygame.Surface, font: pygame.font.Font) -> None:
+        """Draw the expanded dropdown list (call this last for highest z-index)."""
+        if not self.expanded:
+            return
+        
+        # Calculate dropdown dimensions
+        visible_options = min(len(self.options), self.max_visible_options)
+        dropdown_height = visible_options * self.option_height
+        dropdown_rect = pygame.Rect(
+            self.rect.left,
+            self.rect.bottom + 5,
+            self.rect.width,
+            dropdown_height
+        )
+        
+        # Draw backdrop overlay (semi-transparent to focus attention)
+        overlay = pygame.Surface((screen.get_width(), screen.get_height()), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 100))
+        screen.blit(overlay, (0, 0))
+        
+        # Draw dropdown shadow
+        shadow_rect = dropdown_rect.copy()
+        shadow_rect.move_ip(3, 3)
+        pygame.draw.rect(screen, (0, 0, 0, 180), shadow_rect, border_radius=8)
+        
+        # Draw dropdown background
+        pygame.draw.rect(screen, Colors.DROPDOWN_BG, dropdown_rect, border_radius=8)
+        pygame.draw.rect(screen, Colors.BUTTON_HOVER, dropdown_rect, 2, border_radius=8)
+        
+        # Calculate which options to show
+        start_idx = self.scroll_offset
+        end_idx = min(start_idx + self.max_visible_options, len(self.options))
+        
+        self.option_rects = []
+        mouse_pos = pygame.mouse.get_pos()
+        
+        for i, option_idx in enumerate(range(start_idx, end_idx)):
+            option = self.options[option_idx]
+            option_rect = pygame.Rect(
+                dropdown_rect.left + 2,
+                dropdown_rect.top + i * self.option_height,
+                dropdown_rect.width - 4,
+                self.option_height
+            )
+            self.option_rects.append((option_rect, option_idx))
+            
+            # Determine if hovered
+            is_hovered = option_rect.collidepoint(mouse_pos)
+            is_selected = option_idx == self.selected
+            
+            # Draw option background
+            if is_selected:
+                bg_color = Colors.DROPDOWN_SELECTED
+                text_color = Colors.TEXT
+            elif is_hovered:
+                bg_color = Colors.DROPDOWN_HOVER
+                text_color = Colors.BUTTON_HOVER
+            else:
+                bg_color = Colors.DROPDOWN_BG
+                text_color = Colors.TEXT
+            
+            if is_hovered or is_selected:
+                pygame.draw.rect(screen, bg_color, option_rect, border_radius=4)
+            
+            # Draw option text
+            text_surface = font.render(option, True, text_color)
+            text_rect = text_surface.get_rect(midleft=(option_rect.left + 10, option_rect.centery))
+            screen.blit(text_surface, text_rect)
+    
+    def handle_event(self, event: pygame.event.Event) -> bool:
+        """Handle mouse events for the ComboBox."""
+        if event.type == pygame.MOUSEMOTION:
+            was_hovered = self.hovered
+            self.hovered = self.rect.collidepoint(event.pos)
+            return was_hovered != self.hovered
+        
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            # Check if clicked on main box
+            if self.rect.collidepoint(event.pos):
+                self.expanded = not self.expanded
+                return True
+            
+            # If expanded, check option clicks
+            if self.expanded:
+                for option_rect, option_idx in self.option_rects:
+                    if option_rect.collidepoint(event.pos):
+                        self.selected = option_idx
+                        self.expanded = False
+                        if self.callback:
+                            self.callback(option_idx)
+                        return True
+                
+                # Clicked outside dropdown - close it
+                self.expanded = False
+                return True
+        
+        # Handle scroll wheel
+        if event.type == pygame.MOUSEWHEEL and self.expanded:
+            if len(self.options) > self.max_visible_options:
+                self.scroll_offset = max(0, min(
+                    self.scroll_offset - event.y,
+                    len(self.options) - self.max_visible_options
+                ))
+                return True
+        
+        return False
+    
+    def get_selected(self) -> int:
+        """Return the index of the currently selected option."""
+        return self.selected
+    
+    def close(self) -> None:
+        """Close the dropdown."""
+        self.expanded = False
+
+
+class Slider:
+    """Enhanced slider component with professional styling."""
+    
+    def __init__(self, x: int, y: int, width: int, height: int,
+                 min_val: int, max_val: int, initial: int, callback, 
+                 label: str = "") -> None:
         self.rect = pygame.Rect(x, y, width, height)
         self.min_val = min_val
         self.max_val = max_val
         self.value = initial
         self.callback = callback
+        self.label = label
         self.dragging = False
-        self.handle_radius = 8
+        self.handle_radius = 10
+        self.hovered = False
     
-    def draw(self, screen: pygame.Surface, font: pygame.font.Font) -> None:
-        """Draw the slider on the screen."""
-        # Draw track
+    def draw(self, screen: pygame.Surface, font: pygame.font.Font,
+             title_font: pygame.font.Font = None) -> None:
+        """Draw the slider with professional styling."""
+        # Draw label
+        if self.label:
+            label_font = title_font or font
+            label_surface = label_font.render(self.label, True, Colors.SECTION_HEADER)
+            screen.blit(label_surface, (self.rect.left, self.rect.top - 25))
+        
         track_y = self.rect.centery
+        
+        # Draw track background
         pygame.draw.line(screen, Colors.SLIDER_TRACK,
                         (self.rect.left, track_y),
-                        (self.rect.right, track_y), 4)
+                        (self.rect.right, track_y), 6)
         
         # Calculate handle position
         ratio = (self.value - self.min_val) / (self.max_val - self.min_val)
         handle_x = self.rect.left + ratio * self.rect.width
         
-        # Draw handle
+        # Draw filled portion
+        pygame.draw.line(screen, Colors.SLIDER_FILL,
+                        (self.rect.left, track_y),
+                        (int(handle_x), track_y), 6)
+        
+        # Draw handle with glow effect when hovered
+        if self.hovered or self.dragging:
+            # Glow
+            pygame.draw.circle(screen, (*Colors.SLIDER_HANDLE[:3], 100), 
+                              (int(handle_x), track_y), self.handle_radius + 4)
+        
+        # Handle
         pygame.draw.circle(screen, Colors.SLIDER_HANDLE, 
                           (int(handle_x), track_y), self.handle_radius)
+        pygame.draw.circle(screen, Colors.TEXT, 
+                          (int(handle_x), track_y), self.handle_radius, 2)
         
-        # Draw label
-        label = f"Speed: {self.value}ms"
-        text_surface = font.render(label, True, Colors.TEXT)
-        screen.blit(text_surface, (self.rect.left, self.rect.top - 20))
+        # Draw value label
+        value_text = f"{self.value}ms"
+        text_surface = font.render(value_text, True, Colors.TEXT_SECONDARY)
+        text_rect = text_surface.get_rect(midtop=(self.rect.centerx, self.rect.bottom + 5))
+        screen.blit(text_surface, text_rect)
     
     def handle_event(self, event: pygame.event.Event) -> bool:
         """Handle mouse events for the slider."""
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if self.rect.collidepoint(event.pos):
+        if event.type == pygame.MOUSEMOTION:
+            # Check if hovering over handle
+            ratio = (self.value - self.min_val) / (self.max_val - self.min_val)
+            handle_x = self.rect.left + ratio * self.rect.width
+            handle_pos = (int(handle_x), self.rect.centery)
+            
+            mouse_pos = event.pos
+            dist = ((mouse_pos[0] - handle_pos[0]) ** 2 + 
+                   (mouse_pos[1] - handle_pos[1]) ** 2) ** 0.5
+            
+            was_hovered = self.hovered
+            self.hovered = dist <= self.handle_radius + 5
+            
+            if self.dragging:
+                self._update_value(event.pos[0])
+                return True
+            
+            return was_hovered != self.hovered
+        
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.rect.collidepoint(event.pos) or self.hovered:
                 self.dragging = True
                 self._update_value(event.pos[0])
                 return True
@@ -1434,102 +1726,306 @@ class Slider:
         elif event.type == pygame.MOUSEBUTTONUP:
             self.dragging = False
         
-        elif event.type == pygame.MOUSEMOTION and self.dragging:
-            self._update_value(event.pos[0])
-            return True
-        
         return False
     
     def _update_value(self, mouse_x: int) -> None:
         """Update slider value based on mouse position."""
         ratio = (mouse_x - self.rect.left) / self.rect.width
         ratio = max(0, min(1, ratio))
-        self.value = int(self.min_val + ratio * (self.max_val - self.min_val))
-        if self.callback:
-            self.callback(self.value)
+        new_value = int(self.min_val + ratio * (self.max_val - self.min_val))
+        
+        if new_value != self.value:
+            self.value = new_value
+            if self.callback:
+                self.callback(self.value)
 
 
-class Dropdown:
-    """Dropdown menu for algorithm selection."""
+class Sidebar:
+    """Professional sidebar with dynamic vertical layout management."""
     
-    def __init__(self, x: int, y: int, width: int, height: int,
-                 options: List[str], callback) -> None:
-        self.rect = pygame.Rect(x, y, width, height)
-        self.options = options
-        self.selected = 0
-        self.callback = callback
-        self.expanded = False
-        self.hovered = False
-        self.option_height = height
+    def __init__(self, x: int, width: int, height: int, 
+                 font: pygame.font.Font, title_font: pygame.font.Font, 
+                 small_font: pygame.font.Font) -> None:
+        self.rect = pygame.Rect(x, 0, width, height)
+        self.font = font
+        self.title_font = title_font
+        self.small_font = small_font
+        
+        # Layout parameters
+        self.padding = 15
+        self.section_padding = 25
+        self.button_height = 40
+        self.button_width = width - (self.padding * 2)
+        self.small_button_width = (self.button_width - 10) // 2
+        self.combobox_height = 40
+        self.slider_height = 30
+        
+        # Current Y position tracker (dynamic layout)
+        self.current_y = 20
+        
+        # UI Components
+        self.combobox: Optional[ComboBox] = None
+        self.buttons: List[Button] = []
+        self.slider: Optional[Slider] = None
+        
+        # Control button references (for easy access)
+        self.run_button: Optional[Button] = None
+        self.pause_button: Optional[Button] = None
+        self.reset_button: Optional[Button] = None
+        self.clear_button: Optional[Button] = None
+        self.random_button: Optional[Button] = None
+        self.step_button: Optional[Button] = None
+        self.rewind_button: Optional[Button] = None
+        
+        # Telemetry position (will be calculated)
+        self.telemetry_y = 0
+        self.telemetry_height = 130
+        
+    def reset_y(self) -> None:
+        """Reset current Y position to top."""
+        self.current_y = 20
     
-    def draw(self, screen: pygame.Surface, font: pygame.font.Font) -> None:
-        """Draw the dropdown on the screen."""
-        # Draw main button
-        color = Colors.BUTTON_HOVER if self.hovered else Colors.BUTTON
-        pygame.draw.rect(screen, color, self.rect, border_radius=5)
-        pygame.draw.rect(screen, Colors.TEXT_SECONDARY, self.rect, 2, border_radius=5)
+    def advance_y(self, height: int, padding: int = None) -> int:
+        """Advance Y position and return the old value."""
+        pad = padding if padding is not None else self.padding
+        old_y = self.current_y
+        self.current_y += height + pad
+        return old_y
+    
+    def add_section_header(self, text: str) -> None:
+        """Add a section header label."""
+        y = self.advance_y(25, self.section_padding)
+        # Store for later drawing
+        if not hasattr(self, 'headers'):
+            self.headers = []
+        self.headers.append((text, y))
+    
+    def create_combobox(self, options: List[str], callback, label: str = "Algorithm") -> ComboBox:
+        """Create and position the algorithm ComboBox."""
+        y = self.advance_y(self.combobox_height, self.padding)
+        self.combobox = ComboBox(
+            self.rect.left + self.padding, y,
+            self.button_width, self.combobox_height,
+            options, callback, label
+        )
+        return self.combobox
+    
+    def create_control_row(self, run_cb, pause_cb, clear_cb) -> Tuple[Button, Button, Button]:
+        """Create a horizontal row of control buttons (Run, Pause, Clear)."""
+        y = self.advance_y(self.button_height, self.padding)
+        btn_width = (self.button_width - 20) // 3  # 3 buttons with 10px gaps
         
-        # Draw selected option
-        text_surface = font.render(self.options[self.selected], True, Colors.TEXT)
-        text_rect = text_surface.get_rect(midleft=(self.rect.left + 10, self.rect.centery))
-        screen.blit(text_surface, text_rect)
+        # Run button
+        self.run_button = Button(
+            self.rect.left + self.padding, y,
+            btn_width, self.button_height,
+            "▶ Run", run_cb, text_color=Colors.TEXT
+        )
+        self.buttons.append(self.run_button)
         
-        # Draw arrow
-        arrow = "▼" if not self.expanded else "▲"
-        arrow_surface = font.render(arrow, True, Colors.TEXT)
-        arrow_rect = arrow_surface.get_rect(midright=(self.rect.right - 10, self.rect.centery))
-        screen.blit(arrow_surface, arrow_rect)
+        # Pause button
+        self.pause_button = Button(
+            self.rect.left + self.padding + btn_width + 10, y,
+            btn_width, self.button_height,
+            "⏸ Pause", pause_cb, text_color=Colors.TEXT
+        )
+        self.buttons.append(self.pause_button)
         
-        # Draw options if expanded
-        if self.expanded:
-            for i, option in enumerate(self.options):
-                option_rect = pygame.Rect(
-                    self.rect.left,
-                    self.rect.bottom + i * self.option_height,
-                    self.rect.width,
-                    self.option_height
-                )
-                
-                color = Colors.BUTTON_HOVER if option_rect.collidepoint(pygame.mouse.get_pos()) else Colors.BUTTON
-                pygame.draw.rect(screen, color, option_rect)
-                pygame.draw.rect(screen, Colors.TEXT_SECONDARY, option_rect, 1)
-                
-                option_surface = font.render(option, True, Colors.TEXT)
-                option_text_rect = option_surface.get_rect(midleft=(option_rect.left + 10, option_rect.centery))
-                screen.blit(option_surface, option_text_rect)
+        # Clear button
+        self.clear_button = Button(
+            self.rect.left + self.padding + (btn_width + 10) * 2, y,
+            btn_width, self.button_height,
+            "🗑 Clear", clear_cb, text_color=Colors.TEXT
+        )
+        self.buttons.append(self.clear_button)
+        
+        return self.run_button, self.pause_button, self.clear_button
+    
+    def create_vcr_row(self, step_cb, rewind_cb) -> Tuple[Button, Button]:
+        """Create VCR control buttons (Step, Rewind)."""
+        y = self.advance_y(self.button_height, self.padding)
+        
+        # Step button
+        self.step_button = Button(
+            self.rect.left + self.padding, y,
+            self.small_button_width, self.button_height,
+            "⏭ Step", step_cb, text_color=Colors.TEXT
+        )
+        self.buttons.append(self.step_button)
+        
+        # Rewind button
+        self.rewind_button = Button(
+            self.rect.left + self.padding + self.small_button_width + 10, y,
+            self.small_button_width, self.button_height,
+            "⏮ Rewind", rewind_cb, text_color=Colors.TEXT
+        )
+        self.buttons.append(self.rewind_button)
+        
+        return self.step_button, self.rewind_button
+    
+    def create_action_buttons(self, reset_cb, random_cb) -> Tuple[Button, Button]:
+        """Create additional action buttons (Reset, Random)."""
+        y = self.advance_y(self.button_height, self.padding)
+        
+        # Reset button
+        self.reset_button = Button(
+            self.rect.left + self.padding, y,
+            self.small_button_width, self.button_height,
+            "↺ Reset", reset_cb, text_color=Colors.TEXT
+        )
+        self.buttons.append(self.reset_button)
+        
+        # Random button
+        self.random_button = Button(
+            self.rect.left + self.padding + self.small_button_width + 10, y,
+            self.small_button_width, self.button_height,
+            "🎲 Random", random_cb, text_color=Colors.TEXT
+        )
+        self.buttons.append(self.random_button)
+        
+        return self.reset_button, self.random_button
+    
+    def create_slider(self, min_val: int, max_val: int, initial: int, 
+                      callback, label: str = "Animation Speed") -> Slider:
+        """Create and position the speed slider."""
+        y = self.advance_y(self.slider_height, self.padding + 10)  # Extra padding for label
+        self.slider = Slider(
+            self.rect.left + self.padding, y,
+            self.button_width, self.slider_height,
+            min_val, max_val, initial, callback, label
+        )
+        return self.slider
+    
+    def calculate_telemetry_position(self) -> int:
+        """Calculate and reserve space for telemetry at bottom."""
+        # Ensure minimum space for telemetry
+        min_telemetry_y = self.rect.height - self.telemetry_height - 20
+        
+        # Use whichever is lower (current_y or min_telemetry_y)
+        self.telemetry_y = max(self.current_y + 20, min_telemetry_y)
+        
+        return self.telemetry_y
+    
+    def draw(self, screen: pygame.Surface, telemetry_stats: Dict[str, any]) -> None:
+        """Draw the entire sidebar."""
+        # Draw sidebar background
+        pygame.draw.rect(screen, Colors.SIDEBAR, self.rect)
+        
+        # Draw border
+        pygame.draw.line(screen, Colors.SIDEBAR_BORDER,
+                        (self.rect.left, 0), 
+                        (self.rect.left, self.rect.height), 2)
+        
+        # Draw title
+        title = self.title_font.render("Search Simulator", True, Colors.TEXT)
+        screen.blit(title, (self.rect.left + self.padding, 20))
+        
+        # Draw ComboBox (closed state)
+        if self.combobox:
+            self.combobox.draw(screen, self.small_font, self.font)
+        
+        # Draw all buttons
+        for button in self.buttons:
+            button.draw(screen, self.small_font)
+        
+        # Draw slider
+        if self.slider:
+            self.slider.draw(screen, self.small_font, self.font)
+        
+        # Draw telemetry panel at bottom
+        self._draw_telemetry(screen, telemetry_stats)
+        
+        # Draw ComboBox dropdown last (highest z-index if expanded)
+        if self.combobox and self.combobox.expanded:
+            self.combobox.draw_dropdown(screen, self.small_font)
+    
+    def _draw_telemetry(self, screen: pygame.Surface, stats: Dict[str, any]) -> None:
+        """Draw the telemetry panel at the bottom."""
+        # Calculate position
+        telemetry_y = self.calculate_telemetry_position()
+        
+        # Panel dimensions
+        panel_rect = pygame.Rect(
+            self.rect.left + 10,
+            telemetry_y,
+            self.rect.width - 20,
+            self.telemetry_height
+        )
+        
+        # Draw semi-transparent background
+        s = pygame.Surface((panel_rect.width, panel_rect.height), pygame.SRCALPHA)
+        s.fill(Colors.TELEMETRY_BG)
+        screen.blit(s, panel_rect.topleft)
+        
+        # Draw border
+        pygame.draw.rect(screen, Colors.TELEMETRY_BORDER, panel_rect, 2, border_radius=8)
+        
+        # Draw header
+        header = self.font.render("📊 LIVE TELEMETRY", True, Colors.SECTION_HEADER)
+        screen.blit(header, (panel_rect.left + 15, panel_rect.top + 12))
+        
+        # Draw stats
+        y_offset = panel_rect.top + 45
+        line_height = 22
+        
+        stats_to_display = [
+            ("Nodes Visited:", str(stats.get('nodes_visited', 0))),
+            ("Frontier Size:", str(stats.get('frontier_size', 0))),
+            ("Path Length:", str(stats.get('path_length', 0))),
+            ("Time:", f"{stats.get('execution_time_ms', 0)} ms"),
+        ]
+        
+        for label, value in stats_to_display:
+            # Label
+            label_surface = self.small_font.render(label, True, Colors.TEXT_SECONDARY)
+            screen.blit(label_surface, (panel_rect.left + 15, y_offset))
+            
+            # Value (right-aligned)
+            value_surface = self.small_font.render(value, True, Colors.TEXT)
+            value_rect = value_surface.get_rect(right=panel_rect.right - 15, top=y_offset)
+            screen.blit(value_surface, value_rect)
+            
+            y_offset += line_height
     
     def handle_event(self, event: pygame.event.Event) -> bool:
-        """Handle mouse events for the dropdown."""
-        if event.type == pygame.MOUSEMOTION:
-            self.hovered = self.rect.collidepoint(event.pos)
-        
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if self.rect.collidepoint(event.pos):
-                self.expanded = not self.expanded
+        """Handle all sidebar events. Returns True if event was handled."""
+        # Handle ComboBox first (highest priority when expanded)
+        if self.combobox:
+            if self.combobox.handle_event(event):
                 return True
             
-            if self.expanded:
-                for i, _ in enumerate(self.options):
-                    option_rect = pygame.Rect(
-                        self.rect.left,
-                        self.rect.bottom + i * self.option_height,
-                        self.rect.width,
-                        self.option_height
-                    )
-                    if option_rect.collidepoint(event.pos):
-                        self.selected = i
-                        self.expanded = False
-                        if self.callback:
-                            self.callback(i)
+            # If clicking outside expanded dropdown, close it
+            if event.type == pygame.MOUSEBUTTONDOWN and self.combobox.expanded:
+                if not self.combobox.rect.collidepoint(event.pos):
+                    # Check if click was in dropdown options
+                    in_dropdown = False
+                    for option_rect, _ in getattr(self.combobox, 'option_rects', []):
+                        if option_rect.collidepoint(event.pos):
+                            in_dropdown = True
+                            break
+                    
+                    if not in_dropdown:
+                        self.combobox.close()
                         return True
-                
-                self.expanded = False
+        
+        # Handle slider
+        if self.slider and self.slider.handle_event(event):
+            return True
+        
+        # Handle buttons
+        for button in self.buttons:
+            if button.handle_event(event):
+                return True
         
         return False
     
-    def get_selected(self) -> int:
-        """Return the index of the currently selected option."""
-        return self.selected
+    def update_button_states(self, is_running: bool, is_paused: bool) -> None:
+        """Update button text based on application state."""
+        if self.pause_button:
+            self.pause_button.text = "▶ Resume" if is_paused else "⏸ Pause"
+        
+        if self.run_button:
+            self.run_button.active = is_running and not is_paused
 
 
 # =============================================================================
@@ -1605,7 +2101,11 @@ class SearchAlgorithmSimulator:
             }
             self.search_start_time = 0
             
-            # Create UI components
+            # Create professional Sidebar
+            self.sidebar = Sidebar(
+                SIDEBAR_X, SIDEBAR_WIDTH, WINDOW_HEIGHT,
+                self.font, self.title_font, self.small_font
+            )
             self._create_ui()
             
         except Exception as e:
@@ -1613,75 +2113,43 @@ class SearchAlgorithmSimulator:
             raise
     
     def _create_ui(self) -> None:
-        """Create UI buttons, sliders, and dropdowns."""
+        """Create UI using the professional Sidebar with dynamic layout."""
         try:
-            button_width = 240
-            button_height = 40
-            start_x = SIDEBAR_X + 20
-            start_y = 80
-            gap = 10
+            # Reset sidebar layout
+            self.sidebar.reset_y()
             
-            # Algorithm dropdown
+            # Add space for title
+            self.sidebar.advance_y(50, 0)
+            
+            # Create Algorithm ComboBox
             solver_names = [s.name for s in self.solvers]
-            self.algo_dropdown = Dropdown(
-                start_x, start_y, button_width, 35,
-                solver_names, self._on_algorithm_change
+            self.sidebar.create_combobox(solver_names, self._on_algorithm_change, "Algorithm")
+            
+            # Add section spacing
+            self.sidebar.advance_y(0, 10)
+            
+            # Create control buttons row (Run, Pause, Clear)
+            self.sidebar.create_control_row(
+                self._on_run, self._on_pause, self._on_clear_walls
             )
             
-            # Buttons
-            self.buttons = []
+            # Create VCR buttons row (Step, Rewind)
+            self.sidebar.create_vcr_row(self._on_step_forward, self._on_rewind)
             
-            # Run button
-            self.buttons.append(Button(
-                start_x, start_y + 60, button_width, button_height,
-                "▶ Run Search", self._on_run
-            ))
+            # Create additional actions row (Reset, Random)
+            self.sidebar.create_action_buttons(self._on_reset, self._on_random_walls)
             
-            # Reset button
-            self.buttons.append(Button(
-                start_x, start_y + 110, button_width, button_height,
-                "↺ Reset Search", self._on_reset
-            ))
+            # Add section spacing before slider
+            self.sidebar.advance_y(0, 10)
             
-            # Clear walls button
-            self.buttons.append(Button(
-                start_x, start_y + 160, button_width, button_height,
-                "🗑 Clear Walls", self._on_clear_walls
-            ))
-            
-            # Random walls button
-            self.buttons.append(Button(
-                start_x, start_y + 210, button_width, button_height,
-                "🎲 Random Walls", self._on_random_walls
-            ))
-            
-            # Speed slider
-            self.speed_slider = Slider(
-                start_x, start_y + 280, button_width, 20,
+            # Create speed slider
+            self.sidebar.create_slider(
                 SPEED_MIN, SPEED_MAX, DEFAULT_SPEED,
-                self._on_speed_change
+                self._on_speed_change, "Animation Speed"
             )
             
-            # Pause button
-            self.pause_button = Button(
-                start_x, start_y + 330, button_width, button_height,
-                "⏸ Pause", self._on_pause
-            )
-            self.buttons.append(self.pause_button)
-            
-            # VCR Controls - Step Forward
-            self.step_button = Button(
-                start_x, start_y + 380, button_width // 2 - 5, button_height,
-                "⏭ Step", self._on_step_forward
-            )
-            self.buttons.append(self.step_button)
-            
-            # VCR Controls - Rewind
-            self.rewind_button = Button(
-                start_x + button_width // 2 + 5, start_y + 380, button_width // 2 - 5, button_height,
-                "⏮ Rewind", self._on_rewind
-            )
-            self.buttons.append(self.rewind_button)
+            # Calculate telemetry position (it will auto-position at bottom)
+            self.sidebar.calculate_telemetry_position()
             
         except Exception as e:
             print(f"Error creating UI: {e}")
@@ -1734,7 +2202,7 @@ class SearchAlgorithmSimulator:
         """Handle pause button click."""
         if self.is_running:
             self.is_paused = not self.is_paused
-            self.pause_button.text = "▶ Resume" if self.is_paused else "⏸ Pause"
+            self.sidebar.update_button_states(self.is_running, self.is_paused)
     
     def _on_step_forward(self) -> None:
         """Handle step forward button click - advance one step."""
@@ -1762,7 +2230,7 @@ class SearchAlgorithmSimulator:
             self.current_history_index -= 1
             self._restore_state_from_history(self.current_history_index)
             self.is_paused = True
-            self.pause_button.text = "▶ Resume"
+            self.sidebar.update_button_states(self.is_running, self.is_paused)
     
     def _execute_single_step(self) -> None:
         """Execute a single step of the search algorithm."""
@@ -1953,90 +2421,10 @@ class SearchAlgorithmSimulator:
             self.solver_generator = None
     
     def _draw_sidebar(self) -> None:
-        """Draw the sidebar with controls and info."""
+        """Draw the sidebar using the professional Sidebar class."""
         try:
-            # Sidebar background
-            sidebar_rect = pygame.Rect(SIDEBAR_X, 0, SIDEBAR_WIDTH, WINDOW_HEIGHT)
-            pygame.draw.rect(self.screen, Colors.SIDEBAR, sidebar_rect)
-            pygame.draw.line(self.screen, Colors.GRID_LINE, 
-                           (SIDEBAR_X, 0), (SIDEBAR_X, WINDOW_HEIGHT), 2)
-            
-            # Title
-            title = self.title_font.render("Search Simulator", True, Colors.TEXT)
-            self.screen.blit(title, (SIDEBAR_X + 20, 20))
-            
-            # Draw UI components
-            self.algo_dropdown.draw(self.screen, self.small_font)
-            for button in self.buttons:
-                button.draw(self.screen, self.small_font)
-            self.speed_slider.draw(self.screen, self.small_font)
-            
-            # Real-Time Telemetry Dashboard
-            y_offset = 420
-            
-            # Telemetry Title
-            telemetry_title = self.small_font.render("📊 LIVE TELEMETRY", True, Colors.START)
-            self.screen.blit(telemetry_title, (SIDEBAR_X + 20, y_offset))
-            y_offset += 30
-            
-            # Telemetry Stats Box
-            telemetry_bg = pygame.Rect(SIDEBAR_X + 15, y_offset - 5, SIDEBAR_WIDTH - 30, 120)
-            pygame.draw.rect(self.screen, (35, 40, 50), telemetry_bg, border_radius=5)
-            pygame.draw.rect(self.screen, Colors.GRID_LINE, telemetry_bg, 1, border_radius=5)
-            
-            # Real-time stats
-            stats_display = [
-                f"Nodes Visited: {self.search_stats.get('nodes_visited', 0)}",
-                f"Frontier Size: {self.search_stats.get('frontier_size', 0)}",
-                f"Path Length: {self.search_stats.get('path_length', 0)}",
-                f"Time: {self.search_stats.get('execution_time_ms', 0)} ms",
-            ]
-            
-            for stat in stats_display:
-                text = self.small_font.render(stat, True, Colors.TEXT)
-                self.screen.blit(text, (SIDEBAR_X + 25, y_offset))
-                y_offset += 25
-            
-            y_offset += 20
-            
-            # Instructions
-            instructions = [
-                "Controls:",
-                "• Left Click: Place Wall",
-                "• Right Click: Remove Wall",
-                "• Drag Green: Move Start",
-                "• Drag Blue: Move Target",
-                "",
-                "Shortcuts:",
-                "• SPACE - Run | R - Reset",
-                "• G - Random | P - Pause",
-                "",
-                "Legend:",
-            ]
-            
-            for instruction in instructions:
-                text = self.small_font.render(instruction, True, Colors.TEXT_SECONDARY)
-                self.screen.blit(text, (SIDEBAR_X + 20, y_offset))
-                y_offset += 22
-            
-            # Legend colors
-            legend_items = [
-                ("Empty", Colors.EMPTY),
-                ("Wall", Colors.WALL),
-                ("Start", Colors.START),
-                ("Target", Colors.TARGET),
-                ("Frontier", Colors.FRONTIER),
-                ("Visited", Colors.VISITED),
-                ("Path", Colors.PATH),
-            ]
-            
-            y_offset += 5
-            for label, color in legend_items:
-                pygame.draw.rect(self.screen, color, (SIDEBAR_X + 20, y_offset, 20, 20))
-                pygame.draw.rect(self.screen, Colors.GRID_LINE, (SIDEBAR_X + 20, y_offset, 20, 20), 1)
-                text = self.small_font.render(label, True, Colors.TEXT_SECONDARY)
-                self.screen.blit(text, (SIDEBAR_X + 50, y_offset + 2))
-                y_offset += 26
+            # Use the Sidebar class to draw everything
+            self.sidebar.draw(self.screen, self.search_stats)
             
         except Exception as e:
             print(f"Error drawing sidebar: {e}")
@@ -2091,37 +2479,26 @@ class SearchAlgorithmSimulator:
                                     self._on_rewind()
                                 elif event.key == pygame.K_UP:
                                     self.animation_delay = max(SPEED_MIN, self.animation_delay - 10)
-                                    self.speed_slider.value = self.animation_delay
+                                    if self.sidebar.slider:
+                                        self.sidebar.slider.value = self.animation_delay
                                 elif event.key == pygame.K_DOWN:
                                     self.animation_delay = min(SPEED_MAX, self.animation_delay + 10)
-                                    self.speed_slider.value = self.animation_delay
+                                    if self.sidebar.slider:
+                                        self.sidebar.slider.value = self.animation_delay
                             
                             elif event.type == pygame.MOUSEBUTTONDOWN:
-                                # Check UI first
-                                ui_handled = False
-                                if not ui_handled:
-                                    ui_handled = self.algo_dropdown.handle_event(event)
-                                if not ui_handled:
-                                    for button in self.buttons:
-                                        if button.handle_event(event):
-                                            ui_handled = True
-                                            break
-                                if not ui_handled:
-                                    ui_handled = self.speed_slider.handle_event(event)
-                                
-                                if not ui_handled:
+                                # Check sidebar UI first
+                                if not self.sidebar.handle_event(event):
                                     self._handle_mouse_down(event.pos, event.button)
                             
                             elif event.type == pygame.MOUSEMOTION:
                                 self._handle_mouse_motion(event.pos)
-                                # Update UI hover states
-                                self.algo_dropdown.handle_event(event)
-                                for button in self.buttons:
-                                    button.handle_event(event)
+                                # Update sidebar UI hover states
+                                self.sidebar.handle_event(event)
                             
                             elif event.type == pygame.MOUSEBUTTONUP:
                                 self._handle_mouse_up()
-                                self.speed_slider.handle_event(event)
+                                self.sidebar.handle_event(event)
                         
                         except Exception as e:
                             print(f"Error handling event: {e}")
