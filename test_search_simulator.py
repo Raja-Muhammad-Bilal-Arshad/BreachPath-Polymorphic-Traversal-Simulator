@@ -16,7 +16,7 @@ from search_simulator import (
     Node, NodeState, Grid, Colors,
     BFSSolver, DFSSolver, RandomizedDFSSolver, UCSSolver,
     DLSSolver, IDDFSSolver, BidirectionalSolver, ScoutSolver, CustomSolver,
-    Button, Slider, Dropdown
+    Button, Slider, ComboBox
 )
 
 
